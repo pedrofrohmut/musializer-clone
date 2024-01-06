@@ -1,14 +1,12 @@
 #include "raylib.h"
 
-// Constants for fonts
-Font global_font;
-float global_txt_spacing = 2.0f;
-Color global_txt_tint = BLACK;
+const Color BACKGROUND_COLOR = (Color) { 35, 35, 35, 255 }; // Dark Gray
+const Color TEXT_COLOR = (Color) { 220, 220, 220, 255 }; // Light Gray
+const float TXT_SPACING = 2.0f;
 
-void draw_text(const char * text, const Vector2 pos)
+void draw_text(const Font font, const char * text, const Vector2 pos)
 {
-    DrawTextEx(global_font, text, pos, (float) global_font.baseSize, global_txt_spacing,
-            global_txt_tint);
+    DrawTextEx(font, text, pos, (float) font.baseSize, TXT_SPACING, TEXT_COLOR);
 }
 
 int main(void)
@@ -19,44 +17,54 @@ int main(void)
     InitWindow(width, height, "Musializer");
     InitAudioDevice();
 
+    // FPS set to 60 to stop flikering the sound
     SetTargetFPS(60);
 
-    Sound no_way_music = LoadSound("resources/mp3/no-way.mp3");
+    Music music = LoadMusicStream("./resources/mp3/no-way.mp3");
 
     const int font_size = 28;
     const int glyph_count = 250;
-    global_font = LoadFontEx("./resources/fonts/NotoSans-Regular.ttf", font_size, 0, glyph_count);
+    Font noto_font = LoadFontEx("./resources/fonts/NotoSans-Regular.ttf", font_size, 0, glyph_count);
 
     // Play text coords
     const Vector2 play_txt_pos = (Vector2) {
-        (float) GetScreenWidth() / 2 - 150,
+        (float) GetScreenWidth() / 2 - 175,
         (float) GetScreenHeight() / 2 - 80
     };
 
     // Close text coords
     const Vector2 close_pos = (Vector2) {
-        (float) GetScreenWidth() / 2 - 93,
+        (float) GetScreenWidth() / 2 - 86,
         (float) GetScreenHeight() / 2  + 40
     };
 
-    while (! WindowShouldClose())
-    {
-        if (IsKeyPressed(KEY_ENTER)) PlaySound(no_way_music);
+    while (! WindowShouldClose()) {
+        UpdateMusicStream(music);
+
+        if (IsKeyPressed(KEY_ENTER)) {
+            StopMusicStream(music);
+            PlayMusicStream(music);
+        }
+
         if (IsKeyPressed(KEY_Q)) break;
 
         BeginDrawing();
 
-        ClearBackground(WHITE);
+        ClearBackground(BACKGROUND_COLOR);
 
-        draw_text("Press 'Enter' to play sound.", play_txt_pos);
-        draw_text("Press 'q' to exit", close_pos);
+        /* draw_text(noto_font, "|", (Vector2) { (float) width / 2, (float) height / 2 - 50 }); */
+
+        draw_text(noto_font, "Press 'Enter' to play/restart sound.", play_txt_pos);
+        draw_text(noto_font, "Press 'q' to exit", close_pos);
+
+        /* draw_text(noto_font, "|", (Vector2) { (float) width / 2, (float) height / 2 + 50 }); */
 
         EndDrawing();
     }
 
+    UnloadMusicStream(music);
 
-    UnloadSound(no_way_music);
-    UnloadFont(global_font);
+    UnloadFont(noto_font);
 
     CloseAudioDevice();
     CloseWindow();
