@@ -23,6 +23,6 @@ LIBS="-L$RAYLIB_PATH/lib -L$RAYLIB_PATH/examples/others/external/lib
 -lraylib -lglfw -lm -ldl -lpthread"
 
 SOURCE_FILE=main.c
-OUTPUT_FILE=musializer
+OUTPUT_FILE=musializer.out
 
 gcc $CFLAGS -o $OUTPUT_FILE $SOURCE_FILE $LIBS
