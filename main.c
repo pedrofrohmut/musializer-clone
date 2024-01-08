@@ -13,13 +13,15 @@
 #define C_DARK_GRAY    CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
 #define C_LIGHT_GRAY   CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
 #define C_MATRIX_GREEN CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
+#define C_MATRIX_PURPLE CLITERAL(Color){ 0x99, 0x00, 0xCC, 0xFF } // Matrix Purple
 
 const int W_WIDTH = 800; // 800
 const int W_HEIGHT = 600; // 600
 
 const Color BACKGROUND_COLOR = C_DARK_GRAY;
 const Color TEXT_COLOR = C_LIGHT_GRAY;
-const Color REC_COLOR = C_MATRIX_GREEN;
+const Color RECT_COLOR = C_MATRIX_GREEN;
+const Color RECT_NEG_COLOR = C_MATRIX_PURPLE;
 
 const float TXT_SPACING = 2.0f;
 
@@ -28,26 +30,20 @@ typedef struct {
     float right;
 } Frame;
 
-Frame global_frames[4800 * 2] = {0}; // Init with zeros
+Frame global_frames[512] = {0};
 size_t global_frames_count = 0;
 
 void callback(void * buffer_data, unsigned int frames)
 {
-    size_t capacity = ARRAY_LEN(global_frames);
-
-    if (frames <= capacity - global_frames_count) {
-        // Append chunk to end of curr global_frames
-        memcpy(global_frames + global_frames_count, buffer_data, sizeof(Frame) * frames);
-        global_frames_count += frames;
-    } else if (frames <= capacity) {
-        //
-        memmove(global_frames, global_frames + frames, sizeof(Frame) * (capacity - frames));
-        memcpy(global_frames + (capacity - frames), buffer_data, sizeof(Frame) * frames);
-    } else {
-        //
-        memcpy(global_frames, buffer_data, sizeof(Frame) * capacity);
-        global_frames_count = capacity;
+    float * b = (float *) buffer_data;
+    size_t count = 0;
+    for (unsigned int i = 0; i < frames * 2; i = i + 2)
+    {
+        float left = b[i]; float right = b[i+1];
+        global_frames[count] = (Frame) { left, right };
+        count++;
     }
+    global_frames_count = count;
 }
 
 void draw_text(const Font font, const char * text, const Vector2 pos)
@@ -95,29 +91,30 @@ int main(void)
 
     PlayMusicStream(music); // For testing can remove later
 
+    const int middle = W_HEIGHT / 2;
     while (! WindowShouldClose()) {
         UpdateMusicStream(music);
 
-        if (IsKeyPressed(KEY_ENTER)) {
+        if (IsKeyPressed(KEY_ENTER)) { // Start / Restart
             StopMusicStream(music);
             PlayMusicStream(music);
         }
 
-        if (IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_SPACE)) { // Pause / Resume
             if (IsMusicStreamPlaying(music))
                 PauseMusicStream(music);
             else
                 ResumeMusicStream(music);
         }
 
-        if (IsKeyPressed(KEY_Q)) break;
+        if (IsKeyPressed(KEY_Q)) break; // Close
 
-        if (IsKeyPressed(KEY_MINUS) && curr_volume > 0.0f) {
+        if (IsKeyPressed(KEY_MINUS) && curr_volume > 0.0f) { // Decrease Volume
             curr_volume -= 0.05f;
             SetMusicVolume(music, curr_volume);
         }
 
-        if (IsKeyPressed(KEY_EQUAL) && curr_volume < 1.0f) {
+        if (IsKeyPressed(KEY_EQUAL) && curr_volume < 1.0f) { // Increase Volume
             curr_volume += 0.05f;
             SetMusicVolume(music, curr_volume);
         }
@@ -129,17 +126,22 @@ int main(void)
         ClearBackground(BACKGROUND_COLOR);
 
         const float cell_width = (float) W_WIDTH / global_frames_count;
+        for (size_t i = 0; i < global_frames_count; i++) {
+            float sampleL = global_frames[i].left;
 
-        for (size_t i = 0; i < global_frames_count; ++i) {
-            // Pick only one of the channels (1/2)
-            float sample = (float) global_frames[i].left;
+            if (sampleL == 0) continue; // Skip on zero
 
-            // Values to DrawRectangle
             const int pos_x = i * cell_width;
             const int rec_w = 1;
-            const int rec_h = (float) W_HEIGHT / 2 * sample;
-            const int pos_y = W_HEIGHT / 2 - rec_h;
-            DrawRectangle(pos_x, pos_y, rec_w, rec_h, REC_COLOR);
+            const int rec_h = sampleL * W_HEIGHT;
+
+            if (sampleL > 0) {
+                const int left_y = middle - rec_h;
+                DrawRectangle(pos_x, left_y, rec_w, rec_h, RECT_COLOR);
+            } else {
+                const int left_y = middle;
+                DrawRectangle(pos_x, left_y, rec_w, abs(rec_h), RECT_NEG_COLOR);
+            }
         }
 
         draw_text(noto_font, str_desc, (Vector2) { 10, W_HEIGHT - 35 }); // Draw Temp and Volume to the corner
