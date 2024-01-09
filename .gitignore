@@ -1,2 +1,6 @@
+# Executable
 musializer.out
 musializer
+
+# My Binaries
+bin/*.o

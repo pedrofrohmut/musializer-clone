@@ -8,7 +8,11 @@
 
 #include "raylib.h"
 
+#include "../include/logger.h"
+
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
+
+#define GLOBAL_FRAMES_SIZE 512
 
 #define C_DARK_GRAY    CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
 #define C_LIGHT_GRAY   CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
@@ -30,27 +34,22 @@ typedef struct {
     float right;
 } Frame;
 
-Frame global_frames[512] = {0};
+Frame global_frames[GLOBAL_FRAMES_SIZE] = {0};
 size_t global_frames_count = 0;
 
 void capture_frames_callback(void * buffer_data, unsigned int frames)
 {
-    printf("Frames: %d", frames);
-    assert(frames <= 512);
-
-    // TODO: Limit the loop to go until 512
-
-    // TODO: use the global_frames_count instead of a local var
-
+    global_frames_count = 0;
     float * b = (float *) buffer_data;
-    size_t count = 0;
-    for (unsigned int i = 0; i < frames * 2; i = i + 2)
-    {
+    for (unsigned int i = 0; i < frames * 2; i = i + 2) {
+        if (global_frames_count >= GLOBAL_FRAMES_SIZE) {
+            log_info("GlobalFramesCount limit reached for this call");
+            break;
+        }
         float left = b[i]; float right = b[i+1];
-        global_frames[count] = (Frame) { left, right };
-        count++;
+        global_frames[global_frames_count] = (Frame) { left, right };
+        global_frames_count++;
     }
-    global_frames_count = count;
 }
 
 void draw_text(const Font font, const char * text, const Vector2 pos)
@@ -63,7 +62,7 @@ int main(void)
 
     InitWindow(W_WIDTH, W_HEIGHT, "Musializer");
     InitAudioDevice();
-    SetTargetFPS(30); // FPS set to 60 to stop flikering the sound
+    SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
 
     // Load font
     const int font_size = 28;
@@ -75,7 +74,7 @@ int main(void)
     // Check music exists
     const int music_exists = access(music_path, F_OK);
     if (music_exists == -1) {
-        printf("ERROR: Music file not found in the path provided\n");
+        log_error("Music file not found in the path provided\n");
         return 1;
     }
     assert(music_exists != -1);
@@ -160,5 +159,6 @@ int main(void)
     UnloadFont(noto_font);
     CloseAudioDevice();
     CloseWindow();
+
     return 0;
 }

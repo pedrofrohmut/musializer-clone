@@ -20,7 +20,8 @@ LIBS="`pkg-config --libs raylib` -lraylib -lglfw -lm -ldl -lpthread"
 
 SOURCE_FILE=main.c
 OUTPUT_FILE=musializer.out
+MY_BINARIES=bin/logger.o
 
-gcc $CFLAGS -o $OUTPUT_FILE $SOURCE_FILE $LIBS
+gcc $CFLAGS -o $OUTPUT_FILE $SOURCE_FILE $MY_BINARIES $LIBS
 
 echo -e "\n[SUCCESS] Compiled projects successfully into $OUTPUT_FILE"
