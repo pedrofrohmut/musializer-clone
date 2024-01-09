@@ -33,8 +33,15 @@ typedef struct {
 Frame global_frames[512] = {0};
 size_t global_frames_count = 0;
 
-void callback(void * buffer_data, unsigned int frames)
+void capture_frames_callback(void * buffer_data, unsigned int frames)
 {
+    printf("Frames: %d", frames);
+    assert(frames <= 512);
+
+    // TODO: Limit the loop to go until 512
+
+    // TODO: use the global_frames_count instead of a local var
+
     float * b = (float *) buffer_data;
     size_t count = 0;
     for (unsigned int i = 0; i < frames * 2; i = i + 2)
@@ -85,13 +92,13 @@ int main(void)
     float curr_volume = 0.5f;
     SetMusicVolume(music, curr_volume);
 
-    AttachAudioStreamProcessor(music.stream, callback);
+    AttachAudioStreamProcessor(music.stream, capture_frames_callback);
 
     const int music_time_length = GetMusicTimeLength(music);
 
     PlayMusicStream(music); // For testing can remove later
 
-    const int middle = W_HEIGHT / 2;
+    const int middle_y = W_HEIGHT / 2;
     while (! WindowShouldClose()) {
         UpdateMusicStream(music);
 
@@ -119,32 +126,33 @@ int main(void)
             SetMusicVolume(music, curr_volume);
         }
 
-        char str_desc[50];
-        snprintf(str_desc, sizeof(str_desc), "(%.0f) %d / %d", curr_volume * 100, (int) GetMusicTimePlayed(music), music_time_length);
+        char str_vol_temp[50];
+        snprintf(str_vol_temp, sizeof(str_vol_temp), "(%.0f) %d / %d",
+                curr_volume * 100, (int) GetMusicTimePlayed(music), music_time_length);
 
         BeginDrawing(); //###########################################################################
         ClearBackground(BACKGROUND_COLOR);
 
         const float cell_width = (float) W_WIDTH / global_frames_count;
         for (size_t i = 0; i < global_frames_count; i++) {
-            float sampleL = global_frames[i].left;
+            float sample_left = global_frames[i].left;
 
-            if (sampleL == 0) continue; // Skip on zero
+            if (sample_left == 0) continue; // Skip on zero
 
             const int pos_x = i * cell_width;
-            const int rec_w = 1;
-            const int rec_h = sampleL * W_HEIGHT;
+            const int rect_width = 1;
+            const int rect_height = sample_left * W_HEIGHT;
 
-            if (sampleL > 0) {
-                const int left_y = middle - rec_h;
-                DrawRectangle(pos_x, left_y, rec_w, rec_h, RECT_COLOR);
+            if (sample_left > 0) {
+                const int pos_y = middle_y - rect_height;
+                DrawRectangle(pos_x, pos_y, rect_width, rect_height, RECT_COLOR);
             } else {
-                const int left_y = middle;
-                DrawRectangle(pos_x, left_y, rec_w, abs(rec_h), RECT_NEG_COLOR);
+                const int pos_y = middle_y;
+                DrawRectangle(pos_x, pos_y, rect_width, abs(rect_height), RECT_NEG_COLOR);
             }
         }
 
-        draw_text(noto_font, str_desc, (Vector2) { 10, W_HEIGHT - 35 }); // Draw Temp and Volume to the corner
+        draw_text(noto_font, str_vol_temp, (Vector2) { 10, W_HEIGHT - 35 }); // Draw Temp and Volume to the corner
         EndDrawing(); // ###########################################################################
     }
 
