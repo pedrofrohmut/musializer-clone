@@ -12,8 +12,6 @@
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
-#define GLOBAL_FRAMES_SIZE 512
-
 #define C_DARK_GRAY    CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
 #define C_LIGHT_GRAY   CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
 #define C_MATRIX_GREEN CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
@@ -34,28 +32,24 @@ typedef struct {
     float right;
 } Frame;
 
-Frame global_frames[GLOBAL_FRAMES_SIZE] = {0};
+Frame global_frames[4410 * 2] = {0}; // 44100 is the number of audio samples for second
 size_t global_frames_count = 0;
 
-void capture_frames_callback(void * buffer_data, unsigned int frames)
-{
-    global_frames_count = 0;
-    float * b = (float *) buffer_data;
-    for (unsigned int i = 0; i < frames * 2; i = i + 2) {
-        if (global_frames_count >= GLOBAL_FRAMES_SIZE) {
-            log_info("GlobalFramesCount limit reached for this call");
-            break;
-        }
-        float left = b[i]; float right = b[i+1];
-        global_frames[global_frames_count] = (Frame) { left, right };
-        global_frames_count++;
-    }
-}
+// Ring Buffer - Makes the effect of the wave going to the left
+//
+// Has space -> just append data
+//   [ --------                        ] Data Before
+//   [ -------- ********               ] New Data Appended
+//
+// It is full -> Shift (g_capacity - frames_count) to left then append data
+//   [ ------------------------------- ] Data Before
+//   [ ------- ####################### ] Data to shift
+//   [ ####################### ------- ] Data shifted left
+//   [ ####################### ******* ] New Data Appended
+void capture_frames_callback(void * data, unsigned int frames_count);
 
-void draw_text(const Font font, const char * text, const Vector2 pos)
-{
-    DrawTextEx(font, text, pos, (float) font.baseSize, TXT_SPACING, TEXT_COLOR);
-}
+// Call DrawTextEx with some values already set to simplify the call
+void draw_text(const Font font, const char * text, const Vector2 pos);
 
 int main(void)
 {
@@ -134,13 +128,13 @@ int main(void)
 
         const float cell_width = (float) W_WIDTH / global_frames_count;
         for (size_t i = 0; i < global_frames_count; i++) {
-            float sample_left = global_frames[i].left;
+            float sample_left = global_frames[i].left; // Always between 0 and 1
 
             if (sample_left == 0) continue; // Skip on zero
 
             const int pos_x = i * cell_width;
             const int rect_width = 1;
-            const int rect_height = sample_left * W_HEIGHT;
+            const int rect_height = sample_left * ((float) W_HEIGHT / 2); // Always betwwen 0 and Half Screen
 
             if (sample_left > 0) {
                 const int pos_y = middle_y - rect_height;
@@ -161,4 +155,39 @@ int main(void)
     CloseWindow();
 
     return 0;
+}
+
+void capture_frames_callback(void * data, unsigned int frames_count)
+{
+    if (frames_count < 1) return; // Skip on zero
+
+    const size_t capacity = ARRAY_LEN(global_frames);
+
+    if (frames_count > capacity) { log_debug("Over capacity code this!!!"); return; }
+
+    const size_t free_space = capacity - global_frames_count;
+
+    if (frames_count > free_space) {
+        const size_t chunk_size = capacity - frames_count;
+        global_frames_count = chunk_size;
+
+        for (size_t i = 0; i < chunk_size; i++) {
+            global_frames[i] = global_frames[i + frames_count];
+        }
+    }
+
+    const unsigned int sample_count = frames_count * 2; // 1 frames == 2 samples in 2 channels
+
+    // Append to global_frames (Step 2 - because it iterates samples here)
+    for (size_t i = 0; i < sample_count; i += 2) {
+        float left = ((float *) data)[i];
+        float right = ((float *) data)[i + 1];
+        global_frames[global_frames_count] = (Frame) { left, right };
+        global_frames_count++;
+    }
+}
+
+void draw_text(const Font font, const char * text, const Vector2 pos)
+{
+    DrawTextEx(font, text, pos, (float) font.baseSize, TXT_SPACING, TEXT_COLOR);
 }
