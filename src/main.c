@@ -36,16 +36,6 @@ Frame global_frames[4410 * 2] = {0}; // 44100 is the number of audio samples for
 size_t global_frames_count = 0;
 
 // Ring Buffer - Makes the effect of the wave going to the left
-//
-// Has space -> just append data
-//   [ --------                        ] Data Before
-//   [ -------- ********               ] New Data Appended
-//
-// It is full -> Shift (g_capacity - frames_count) to left then append data
-//   [ ------------------------------- ] Data Before
-//   [ ------- ####################### ] Data to shift
-//   [ ####################### ------- ] Data shifted left
-//   [ ####################### ******* ] New Data Appended
 void capture_frames_callback(void * data, unsigned int frames_count);
 
 // Call DrawTextEx with some values already set to simplify the call
@@ -71,16 +61,8 @@ int main(void)
         log_error("Music file not found in the path provided\n");
         return 1;
     }
-    assert(music_exists != -1);
 
     const Music music = LoadMusicStream(music_path);
-
-    printf("music.frameCount: %d\n", music.frameCount);
-    printf("music.stream.sampleRate: %d\n", music.stream.sampleRate);
-    printf("music.stream.sampleSize: %d\n", music.stream.sampleSize);
-    printf("music.stream.channels: %d\n", music.stream.channels);
-    assert(music.stream.sampleSize == 32);
-    assert(music.stream.channels == 2);
 
     float curr_volume = 0.5f;
     SetMusicVolume(music, curr_volume);
@@ -159,11 +141,21 @@ int main(void)
 
 void capture_frames_callback(void * data, unsigned int frames_count)
 {
-    if (frames_count < 1) return; // Skip on zero
+    if (frames_count < 1) {  log_warn("0 zero for this call"); return; }// Skip on zero
 
     const size_t capacity = ARRAY_LEN(global_frames);
 
     if (frames_count > capacity) { log_debug("Over capacity code this!!!"); return; }
+
+    // Has space -> just append data
+    //   [ --------                        ] Data Before
+    //   [ -------- ********               ] New Data Appended
+    //
+    // It is full -> Shift (g_capacity - frames_count) to left and then append data
+    //   [ ------------------------------- ] Data Before
+    //   [ ------- ####################### ] Data to shift
+    //   [ ####################### ------- ] Data shifted left
+    //   [ ####################### ******* ] New Data Appended
 
     const size_t free_space = capacity - global_frames_count;
 
