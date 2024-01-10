@@ -1,36 +1,42 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-void _log(const char *text, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    printf("%s", text);
-    vprintf(format, args);
-    printf("\n");
-    va_end(args);
-}
-
 void log_info(const char *format, ...)
 {
+    printf("[INFO] ");
     va_list args;
-    _log("[INFO] ", format, args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\n");
 }
 
 void log_warn(const char *format, ...)
 {
+    printf("[WARN] ");
     va_list args;
-    _log("[WARN] ", format, args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\n");
 }
 
 void log_error(const char *format, ...)
 {
+    printf("[ERROR] ");
     va_list args;
-    _log("[ERROR] ", format, args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\n");
 }
 
-void log_debug(const char *format, ...)
+void log_debug(const char * format, ...)
 {
+    printf("[DEBUG] ");
     va_list args;
-    _log("[DEBUG] ", format, args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\n");
 }
