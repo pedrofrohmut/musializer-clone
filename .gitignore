@@ -1,6 +1,5 @@
 # Executable
-musializer.out
-musializer
+*.out
 
 # My Binaries
 bin/*.o

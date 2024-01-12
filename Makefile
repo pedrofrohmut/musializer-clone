@@ -12,6 +12,9 @@ logger: src/logger.c
 	${CC} ${CFLAGS} -c src/logger.c -o bin/logger.o
 	@echo "Logger built into binaries"
 
+fft: src/fft.c
+	${CC} ${CFLAGS} -o fft.out src/fft.c -lm
+
 main: src/main.c
 	${CC} ${CFLAGS} -o ${OUTPUT_FILE} ${SOURCE_FILE} ${MY_BINARIES} ${LIBS}
 	@echo "Muzializer built with no errors"
