@@ -1,9 +1,10 @@
 #include <assert.h>
+#include <complex.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
 
 #include "raylib.h"
@@ -32,47 +33,61 @@ typedef struct {
     float right;
 } Frame;
 
-Frame global_frames[4410 * 2] = {0}; // 44100 is the number of audio samples for second
-size_t global_frames_count = 0;
+/* Frame global_frames[4410 * 2] = {0}; // 44100 is the number of audio samples for second */
+/* size_t global_frames_count = 0; */
+
+float pi = 3.141592;
+#define N 256
+float in[N];
+float complex out[N];
+float max_amp;
+
+void fft(float in[], size_t step, float complex out[], size_t n)
+{
+    assert(n > 0);
+
+    if (n == 1) {
+        out[0] = in[0];
+        return;
+    }
+
+    fft(in,        step * 2, out,         n / 2);
+    fft(in + step, step * 2, out + n / 2, n / 2);
+
+    for (size_t k = 0; k < n / 2; k++) {
+        float t  = (float) k / n;
+        float complex v = cexp(-2 * I * pi * t) * out[k + n / 2];
+        float complex e = out[k];
+        out[k]         = e + v;
+        out[k + n / 2] = e - v;
+    }
+}
+
+float amp(float x)
+{
+    float a = fabsf(crealf(x));
+    float b = fabsf(cimagf(x));
+    if (a < b) return b;
+    return a;
+}
 
 // Ring Buffer - Makes the effect of the wave going to the left
 void capture_frames_callback(void * data, unsigned int frames_count)
 {
-    if (frames_count < 1) {  log_warn("0 zero for this call"); return; }// Skip on zero
+    if (frames_count > N) frames_count = N;
 
-    const size_t capacity = ARRAY_LEN(global_frames);
+    Frame * frames = data;
 
-    if (frames_count > capacity) { log_debug("Over capacity code this!!!"); return; }
-
-    // Has space -> just append data
-    //   [ --------                        ] Data Before
-    //   [ -------- ********               ] New Data Appended
-    //
-    // It is full -> Shift (g_capacity - frames_count) to left and then append data
-    //   [ ------------------------------- ] Data Before
-    //   [ ------- ####################### ] Data to shift
-    //   [ ####################### ------- ] Data shifted left
-    //   [ ####################### ******* ] New Data Appended
-
-    const size_t free_space = capacity - global_frames_count;
-
-    if (frames_count > free_space) {
-        const size_t chunk_size = capacity - frames_count;
-        global_frames_count = chunk_size;
-
-        for (size_t i = 0; i < chunk_size; i++) {
-            global_frames[i] = global_frames[i + frames_count];
-        }
+    for (size_t i = 0; i < frames_count; i++) {
+        in[i] = frames[i].left;
     }
 
-    const unsigned int sample_count = frames_count * 2; // 1 frames == 2 samples in 2 channels
+    fft(in, 1, out, N);
 
-    // Append to global_frames (Step 2 - because it iterates samples here)
-    for (size_t i = 0; i < sample_count; i += 2) {
-        float left = ((float *) data)[i];
-        float right = ((float *) data)[i + 1];
-        global_frames[global_frames_count] = (Frame) { left, right };
-        global_frames_count++;
+    max_amp = 0.0f;
+    for (size_t i = 0; i < frames_count; i++) {
+        float a = amp(out[i]);
+        if (max_amp < a) max_amp = a;
     }
 }
 
@@ -113,7 +128,8 @@ int main(void)
 
     PlayMusicStream(music); // For testing can remove later
 
-    const int middle_y = W_HEIGHT / 2;
+    const float half_height = (float) W_HEIGHT / 2;
+
     while (! WindowShouldClose()) {
         UpdateMusicStream(music);
 
@@ -148,23 +164,18 @@ int main(void)
         BeginDrawing(); //###########################################################################
         ClearBackground(BACKGROUND_COLOR);
 
-        const float cell_width = (float) W_WIDTH / global_frames_count;
-        for (size_t i = 0; i < global_frames_count; i++) {
-            float sample_left = global_frames[i].left; // Always between 0 and 1
+        const float cell_width = (float) W_WIDTH / N;
 
-            if (sample_left == 0) continue; // Skip on zero
+        for (size_t i = 0; i < N; i++) {
+            float t = amp(out[i]) / max_amp;
+            /* float t = amp(out[i]); */
 
             const int pos_x = i * cell_width;
-            const int rect_width = 1;
-            const int rect_height = sample_left * ((float) W_HEIGHT / 2); // Always betwwen 0 and Half Screen
+            const int pos_y = half_height - (half_height * t);
+            const int rect_width = cell_width;
+            const int rect_height = half_height * t;
 
-            if (sample_left > 0) {
-                const int pos_y = middle_y - rect_height;
-                DrawRectangle(pos_x, pos_y, rect_width, rect_height, RECT_COLOR);
-            } else {
-                const int pos_y = middle_y;
-                DrawRectangle(pos_x, pos_y, rect_width, abs(rect_height), RECT_NEG_COLOR);
-            }
+            DrawRectangle(pos_x, pos_y, rect_width, rect_height, RECT_COLOR);
         }
 
         draw_text(noto_font, str_vol_temp, (Vector2) { 10, W_HEIGHT - 35 }); // Draw Temp and Volume to the corner
