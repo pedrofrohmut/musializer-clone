@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <dlfcn.h> // POSIX only
+
 #include "raylib.h"
 
 #include "logger.h"
@@ -14,180 +16,82 @@
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
-#define C_DARK_GRAY    CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
-#define C_LIGHT_GRAY   CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
-#define C_MATRIX_GREEN CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
-#define C_MATRIX_PURPLE CLITERAL(Color){ 0x99, 0x00, 0xCC, 0xFF } // Matrix Purple
-
-const int W_WIDTH = 800; // 800
-const int W_HEIGHT = 600; // 600
-
-const Color BACKGROUND_COLOR = C_DARK_GRAY;
-const Color TEXT_COLOR = C_LIGHT_GRAY;
-const Color RECT_COLOR = C_MATRIX_GREEN;
-const Color RECT_NEG_COLOR = C_MATRIX_PURPLE;
-
-const float TXT_SPACING = 2.0f;
-
-typedef struct {
-    float left;
-    float right;
-} Frame;
-
-/* Frame global_frames[4410 * 2] = {0}; // 44100 is the number of audio samples for second */
-/* size_t global_frames_count = 0; */
-
-float pi = 3.141592;
-#define N 256
-float in[N];
-float complex out[N];
-float max_amp;
-
-void fft(float in[], size_t step, float complex out[], size_t n)
+char * shift_args(int * argc, char ***argv)
 {
-    assert(n > 0);
-
-    if (n == 1) {
-        out[0] = in[0];
-        return;
-    }
-
-    fft(in,        step * 2, out,         n / 2);
-    fft(in + step, step * 2, out + n / 2, n / 2);
-
-    for (size_t k = 0; k < n / 2; k++) {
-        float t  = (float) k / n;
-        float complex v = cexp(-2 * I * pi * t) * out[k + n / 2];
-        float complex e = out[k];
-        out[k]         = e + v;
-        out[k + n / 2] = e - v;
-    }
+    assert(*argc > 0);
+    char * result = (**argv);
+    (*argv) += 1;
+    (*argc) -= 1;
+    return result;
 }
 
-float amp(float x)
+const char * libplug_file_name = "libplug.so";
+void * libplug = NULL;
+plug_hello_t plug_hello = NULL;
+plug_init_t plug_init = NULL;
+plug_update_t plug_update = NULL;
+Plug plug = {0};
+
+// Hot reloading: links to libplug.so
+bool reload_libplug(void)
 {
-    float a = fabsf(crealf(x));
-    float b = fabsf(cimagf(x));
-    if (a < b) return b;
-    return a;
-}
+    if (libplug != NULL) dlclose(libplug);
 
-// Ring Buffer - Makes the effect of the wave going to the left
-void capture_frames_callback(void * data, unsigned int frames_count)
-{
-    if (frames_count > N) frames_count = N;
-
-    Frame * frames = data;
-
-    for (size_t i = 0; i < frames_count; i++) {
-        in[i] = frames[i].left;
+    libplug = dlopen(libplug_file_name, RTLD_NOW);
+    if (libplug == NULL) {
+        fprintf(stderr, "ERROR: could not load %s: %s\n", libplug_file_name, dlerror());
+        return false;
     }
 
-    fft(in, 1, out, N);
-
-    max_amp = 0.0f;
-    for (size_t i = 0; i < frames_count; i++) {
-        float a = amp(out[i]);
-        if (max_amp < a) max_amp = a;
+    plug_hello = dlsym(libplug, "plug_hello");
+    if (plug_hello == NULL) {
+        fprintf(stderr, "ERROR: could not find plug_hello symbol in %s: %s\n", libplug_file_name, dlerror());
+        return false;
     }
+
+    plug_init = dlsym(libplug, "plug_init");
+    if (plug_init == NULL) {
+        fprintf(stderr, "ERROR: could not find plug_init symbol in %s: %s\n", libplug_file_name, dlerror());
+        return false;
+    }
+
+    plug_update = dlsym(libplug, "plug_update");
+    if (plug_update == NULL) {
+        fprintf(stderr, "ERROR: could not find plug_update symbol in %s: %s\n", libplug_file_name, dlerror());
+        return false;
+    }
+
+    log_info("libplug.so Reloaded");
+
+    return true;
 }
 
-// Call DrawTextEx with some values already set to simplify the call
-void draw_text(const Font font, const char * text, const Vector2 pos)
+int main(int argc, char **argv)
 {
-    DrawTextEx(font, text, pos, (float) font.baseSize, TXT_SPACING, TEXT_COLOR);
-}
+    if (!reload_libplug()) return 1;
 
-int main(void)
-{
-    plug_hello();
-    return 0;
-
-    InitWindow(W_WIDTH, W_HEIGHT, "Musializer");
-    InitAudioDevice();
-    SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
-
-    // Load font
-    const int font_size = 28;
-    const int glyph_count = 250;
-    const Font noto_font = LoadFontEx("./resources/fonts/NotoSans-Regular.ttf", font_size, 0, glyph_count);
-
-    const char * music_path = "resources/mp3/done-better.mp3";
-
-    // Check music exists
-    const int music_exists = access(music_path, F_OK);
-    if (music_exists == -1) {
-        log_error("Music file not found in the path provided\n");
+    const char * program = shift_args(&argc, &argv);
+    // TODO: supply input file vie drag & drop
+    if (argc == 0) {
+        fprintf(stderr, "Usage: %s <input>\n", program);
+        fprintf(stderr, "ERROR: no input file is provided\n");
         return 1;
     }
+    const char * file_path = shift_args(&argc, &argv);
 
-    const Music music = LoadMusicStream(music_path);
+    InitWindow(800, 600, "Musializer");
+    SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
+    InitAudioDevice();
 
-    float curr_volume = 0.5f;
-    SetMusicVolume(music, curr_volume);
-
-    AttachAudioStreamProcessor(music.stream, capture_frames_callback);
-
-    const int music_time_length = GetMusicTimeLength(music);
-
-    PlayMusicStream(music); // For testing can remove later
-
-    const float half_height = (float) W_HEIGHT / 2;
-
+    plug_init(&plug, file_path);
     while (! WindowShouldClose()) {
-        UpdateMusicStream(music);
-
-        if (IsKeyPressed(KEY_ENTER)) { // Start / Restart
-            StopMusicStream(music);
-            PlayMusicStream(music);
-        }
-
-        if (IsKeyPressed(KEY_SPACE)) { // Pause / Resume
-            if (IsMusicStreamPlaying(music))
-                PauseMusicStream(music);
-            else
-                ResumeMusicStream(music);
-        }
-
-        if (IsKeyPressed(KEY_Q)) break; // Close
-
-        if (IsKeyPressed(KEY_MINUS) && curr_volume > 0.0f) { // Decrease Volume
-            curr_volume -= 0.05f;
-            SetMusicVolume(music, curr_volume);
-        }
-
-        if (IsKeyPressed(KEY_EQUAL) && curr_volume < 1.0f) { // Increase Volume
-            curr_volume += 0.05f;
-            SetMusicVolume(music, curr_volume);
-        }
-
-        char str_vol_temp[50];
-        snprintf(str_vol_temp, sizeof(str_vol_temp), "(%.0f) %d / %d",
-                curr_volume * 100, (int) GetMusicTimePlayed(music), music_time_length);
-
-        BeginDrawing(); //###########################################################################
-        ClearBackground(BACKGROUND_COLOR);
-
-        const float cell_width = (float) W_WIDTH / N;
-
-        for (size_t i = 0; i < N; i++) {
-            float t = amp(out[i]) / max_amp;
-            /* float t = amp(out[i]); */
-
-            const int pos_x = i * cell_width;
-            const int pos_y = half_height - (half_height * t);
-            const int rect_width = cell_width;
-            const int rect_height = half_height * t;
-
-            DrawRectangle(pos_x, pos_y, rect_width, rect_height, RECT_COLOR);
-        }
-
-        draw_text(noto_font, str_vol_temp, (Vector2) { 10, W_HEIGHT - 35 }); // Draw Temp and Volume to the corner
-        EndDrawing(); // ###########################################################################
+        if (IsKeyPressed(KEY_R) && !reload_libplug()) return 1;
+        if (IsKeyPressed(KEY_Q)) break; // Quit/Close
+        plug_update(&plug);
     }
 
-    UnloadMusicStream(music);
-    UnloadFont(noto_font);
+    UnloadMusicStream(plug.music);
+    //UnloadFont(plug.font);
     CloseAudioDevice();
     CloseWindow();
 

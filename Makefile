@@ -7,6 +7,7 @@
 # ENV
 
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig:$HOME/.pkgconfig
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:./build
 
 # Compiler app
 CC = gcc
@@ -16,7 +17,7 @@ CC = gcc
 #   -Wextra (Enable more warnings no covered by -Wall)
 CFLAGS = -Wall -Wextra -std=c99 $(pkg-config --cflags raylib)
 
-LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread  -L./build/ -lplug
+LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread  -L./build/
 
 all: clean logger plug main
 
