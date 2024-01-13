@@ -9,7 +9,8 @@
 
 #include "raylib.h"
 
-#include "../include/logger.h"
+#include "logger.h"
+#include "plug.h"
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
@@ -99,6 +100,9 @@ void draw_text(const Font font, const char * text, const Vector2 pos)
 
 int main(void)
 {
+    plug_hello();
+    return 0;
+
     InitWindow(W_WIDTH, W_HEIGHT, "Musializer");
     InitAudioDevice();
     SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
@@ -108,7 +112,7 @@ int main(void)
     const int glyph_count = 250;
     const Font noto_font = LoadFontEx("./resources/fonts/NotoSans-Regular.ttf", font_size, 0, glyph_count);
 
-    const char * music_path = "./resources/mp3/no-way.mp3";
+    const char * music_path = "resources/mp3/done-better.mp3";
 
     // Check music exists
     const int music_exists = access(music_path, F_OK);

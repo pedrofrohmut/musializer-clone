@@ -1,6 +1,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "logger.h"
+
 void log_info(const char *format, ...)
 {
     printf("[INFO] ");
