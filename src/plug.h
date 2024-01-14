@@ -35,6 +35,7 @@ typedef struct {
 
 typedef void (*plug_hello_t)(void); // Type alias
 
+// TODO: Leave INIT out of if. Since all that matters is the loop anyway
 // Initialize the state
 typedef void (*plug_init_t)(Plug * plug, const char * file_path);
 

@@ -1,3 +1,4 @@
+#include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -82,22 +83,10 @@ void draw_text(const Font font, const char * text, const Vector2 pos)
     DrawTextEx(font, text, pos, (float) font.baseSize, TXT_SPACING, GREEN);
 }
 
-    /* printf("Plug init called\n"); */
-    /*  */
-    /* const int music_exists = access(file_path, F_OK); // -1 for file not found */
-    /* if (music_exists == -1) { */
-    /*     printf("Music file not found in the path provided\n"); */
-    /* } */
-    /* assert(music_exists != -1); */
-    /* printf("music.frameCount = %u\n", plug->music.frameCount); */
-    /* printf("music.stream.sampleRate = %u\n", plug->music.stream.sampleRate); */
-    /* printf("music.stream.sampleSize = %u\n", plug->music.stream.sampleSize); */
-    /* printf("music.stream.channels = %u\n", plug->music.stream.channels); */
-    /* assert(plug->music.stream.sampleSize == 32); */
-    /* assert(plug->music.stream.channels == 2); */
 
 
 
+// TODO: after refactor get this #ifs out of here
 #if 1
 // Initialize the state
 void plug_init(Plug * plug, const char * file_path)
@@ -112,7 +101,29 @@ void plug_init(Plug * plug, const char * file_path)
         exit(1);
     }
 
+    if (IsMusicReady(plug->music)) {
+        log_debug("Music is ready (Why?)");
+        UnloadMusicStream(plug->music);
+        //DetachAudioStreamProcessor(plug->music.stream, audio_callback);
+    } else {
+        log_debug("Music is NOT ready (normal)");
+    }
+
     plug->music = LoadMusicStream(file_path);
+
+    /* printf("Plug init called\n"); */
+    /*  */
+    /* const int music_exists = access(file_path, F_OK); // -1 for file not found */
+    /* if (music_exists == -1) { */
+    /*     printf("Music file not found in the path provided\n"); */
+    /* } */
+    /* assert(music_exists != -1); */
+    /* printf("music.frameCount = %u\n", plug->music.frameCount); */
+    /* printf("music.stream.sampleRate = %u\n", plug->music.stream.sampleRate); */
+    /* printf("music.stream.sampleSize = %u\n", plug->music.stream.sampleSize); */
+    /* printf("music.stream.channels = %u\n", plug->music.stream.channels); */
+    /* assert(plug->music.stream.sampleSize == 32); */
+    /* assert(plug->music.stream.channels == 2); */
 
     plug->music_len = GetMusicTimeLength(plug->music);
     plug->curr_volume = 0.0f;
@@ -139,7 +150,6 @@ void plug_init(Plug * plug, const char * file_path)
     }
 
     AttachAudioStreamProcessor(plug->music.stream, audio_callback);
-
     SetMusicVolume(plug->music, plug->curr_volume);
     PlayMusicStream(plug->music); // For testing can remove later
 }
@@ -178,6 +188,7 @@ void plug_init(Plug * plug, const char * file_path)
 }
 #endif
 
+// TODO: after refactor get this #ifs out of here
 #if 1
 void plug_update(Plug * plug)
 {
