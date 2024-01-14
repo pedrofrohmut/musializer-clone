@@ -25,16 +25,20 @@ clean:
 	rm -f bin/*.o
 	rm -f build/*.so
 	rm -f build/*.out
-	@echo -e "> Clean up complete\n"
+	@echo -e "OK > Clean up complete\n"
 
 logger: src/logger.c
 	${CC} ${CFLAGS} -c src/logger.c -o bin/logger.o
-	@echo -e "> bin/logger.o built into binaries\n"
+	@echo -e "OK > bin/logger.o built into binaries\n"
 
 plug: src/plug.c
-	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared src/plug.c ${LIBS}
-	@echo -e "> build/libplug.so built with no errors\n"
+	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
+	@echo -e "OK > build/libplug.so built with no errors\n"
 
 main: src/main.c
 	${CC} ${CFLAGS} -o ./build/musializer.out ./src/main.c ./bin/logger.o ${LIBS}
-	@echo -e "> build/muzializer.out built with no errors"
+	@echo -e "OK > build/muzializer.out built with no errors"
+
+debug: src/main.c
+	${CC} ${CFLAGS} -O0 -o ./build/debug_musializer.out ./src/main.c ./src/logger.c ${LIBS}
+	@echo -e "OK > build/debug_muzializer.out built with no errors"

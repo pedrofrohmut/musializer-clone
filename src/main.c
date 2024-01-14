@@ -16,6 +16,13 @@
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
+const char * libplug_file_name = "libplug.so";
+void * libplug = NULL;
+plug_hello_t plug_hello = NULL;
+plug_init_t plug_init = NULL;
+plug_update_t plug_update = NULL;
+Plug plug;
+
 char * shift_args(int * argc, char ***argv)
 {
     assert(*argc > 0);
@@ -24,13 +31,6 @@ char * shift_args(int * argc, char ***argv)
     (*argc) -= 1;
     return result;
 }
-
-const char * libplug_file_name = "libplug.so";
-void * libplug = NULL;
-plug_hello_t plug_hello = NULL;
-plug_init_t plug_init = NULL;
-plug_update_t plug_update = NULL;
-Plug plug = {0};
 
 // Hot reloading: links to libplug.so
 bool reload_libplug(void)
@@ -68,6 +68,8 @@ bool reload_libplug(void)
 
 int main(int argc, char **argv)
 {
+    //plug = (Plug) { .font = NULL, .music = NULL, .music_len = 0.0f, .curr_volume = 0.0f };
+
     if (!reload_libplug()) return 1;
 
     const char * program = shift_args(&argc, &argv);
@@ -85,13 +87,21 @@ int main(int argc, char **argv)
 
     plug_init(&plug, file_path);
     while (! WindowShouldClose()) {
-        if (IsKeyPressed(KEY_R) && !reload_libplug()) return 1;
+        if (IsKeyPressed(KEY_R)) {
+            if (!reload_libplug())
+                return 1;
+            else
+                printf("RELOADED!\n");
+        }
+
         if (IsKeyPressed(KEY_Q)) break; // Quit/Close
+
         plug_update(&plug);
     }
 
     UnloadMusicStream(plug.music);
-    //UnloadFont(plug.font);
+    UnloadFont(plug.font);
+
     CloseAudioDevice();
     CloseWindow();
 
