@@ -24,15 +24,30 @@ typedef struct {
 } Frame;
 
 typedef struct {
+    // Window
     float height;
     float width;
+
+    // Music
     float curr_volume;
     float music_len;
     Music music;
+
+    // Audio Samples
+    float * in;
+    float complex * out;
+
+    // Font
     Font font;
 } Plug;
 
 // Run on every loop
 typedef void (*plug_update_t)(Plug * plug);
+
+// Attached to the music stream
+typedef void (*plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
+
+// Reload the global variables for input and output
+typedef void (*plug_reload_t)(Plug * plug);
 
 #endif//PLUG_H_

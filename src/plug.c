@@ -9,6 +9,9 @@
 #include "plug.h"
 #include "raylib.h"
 
+float * global_input;
+float complex * global_output;
+
 // Call DrawTextEx with some values already set to simplify the call
 void draw_text(const Font font, const char * text, const Vector2 pos)
 {
@@ -68,4 +71,31 @@ void plug_update(Plug * plug)
     // UI Text -------------------------------------------------------------------------------------
 
     EndDrawing(); // ###############################################################################
+}
+
+// Must use global_input and global_output because you cannot access the Plug
+// and keep a valid callback signature
+void plug_audio_callback(void * data, unsigned int frames_count)
+{
+    if (frames_count > N) frames_count = N;
+
+    assert(data != NULL);
+
+    /* log_debug("Plug audio. Frames: %d", frames_count); */
+
+    Frame * frames = (Frame *) data;
+
+    printf("IN:");
+    for (size_t i = 0 ; i < 5; i++) {
+        printf(" %3.2f", global_input[i]);
+    }
+    printf("\n");
+}
+
+// Refreshes the references lost on the hot-reloading
+void plug_reload(Plug * plug)
+{
+    log_debug("Plug reload");
+    global_input = plug->in;
+    global_output = plug->out;
 }

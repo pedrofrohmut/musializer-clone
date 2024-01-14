@@ -5,7 +5,7 @@
 #include <math.h>
 #include <assert.h>
 
-#include "logger.h"
+//#include "logger.h"
 #include "plug.h"
 #include "raylib.h"
 
