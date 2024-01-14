@@ -9,10 +9,13 @@
 #define C_MATRIX_GREEN  CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
 #define C_MATRIX_PURPLE CLITERAL(Color){ 0x99, 0x00, 0xCC, 0xFF } // Matrix Purple
 
+const int W_WIDTH = 800; // 800
+const int W_HEIGHT = 600; // 600
+
 const Color BACKGROUND_COLOR = C_DARK_GRAY;
-const Color TEXT_COLOR       = C_LIGHT_GRAY;
-const Color RECT_COLOR       = C_MATRIX_GREEN;
-const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
+const Color TEXT_COLOR = C_LIGHT_GRAY;
+const Color RECT_COLOR = C_MATRIX_GREEN;
+const Color RECT_NEG_COLOR = C_MATRIX_PURPLE;
 
 const float TEXT_SPACING = 2.0f;
 
@@ -31,6 +34,12 @@ typedef struct {
     Music music;
     Font font;
 } Plug;
+
+typedef void (*plug_hello_t)(void); // Type alias
+
+// TODO: Leave INIT out of if. Since all that matters is the loop anyway
+// Initialize the state
+typedef void (*plug_init_t)(Plug * plug, const char * file_path);
 
 // Run on every loop
 typedef void (*plug_update_t)(Plug * plug);
