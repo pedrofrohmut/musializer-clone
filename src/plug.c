@@ -43,6 +43,35 @@ void check_key_pressed(Plug * plug)
     }
 }
 
+void fft(float in[], size_t step, float complex out[], size_t n)
+{
+    assert(n > 0);
+
+    if (n == 1) {
+        out[0] = in[0];
+        return;
+    }
+
+    fft(in,        step * 2, out,         n / 2);
+    fft(in + step, step * 2, out + n / 2, n / 2);
+
+    for (size_t k = 0; k < n / 2; k++) {
+        float t  = (float) k / n;
+        float complex v = cexp(-2 * I * PI * t) * out[k + n / 2];
+        float complex e = out[k];
+        out[k]         = e + v;
+        out[k + n / 2] = e - v;
+    }
+}
+
+float amp(float x)
+{
+    float a = fabsf(crealf(x));
+    float b = fabsf(cimagf(x));
+    if (a < b) return b;
+    return a;
+}
+
 void plug_update(Plug * plug)
 {
     UpdateMusicStream(plug->music);
@@ -70,6 +99,30 @@ void plug_update(Plug * plug)
     draw_text(plug->font, str_vol_temp, (Vector2) { plug->width - 195, plug->height - 55 });
     // UI Text -------------------------------------------------------------------------------------
 
+    // Draw Rectangles -----------------------------------------------------------------------------
+    fft(global_input, 1, global_output, N);
+
+    float max_amp = 0.0f;
+    for (size_t i = 0; i < N; i++) {
+       float a = amp(global_output[i]);
+       if (max_amp < a) max_amp = a;
+    }
+
+    const float cell_width = plug->width / N;
+    const float half_height = plug->height / 2;
+
+    for (size_t i = 0; i < N; i++) {
+       float t = amp(global_output[i]) / max_amp;
+
+       const int pos_x = i * cell_width;
+       const int pos_y = half_height - (half_height * t);
+       const int rect_width = cell_width;
+       const int rect_height = half_height * t;
+
+       DrawRectangle(pos_x, pos_y, rect_width, rect_height, LIME);
+    }
+    // Draw Rectangles -----------------------------------------------------------------------------
+
     EndDrawing(); // ###############################################################################
 }
 
@@ -85,11 +138,15 @@ void plug_audio_callback(void * data, unsigned int frames_count)
 
     Frame * frames = (Frame *) data;
 
-    printf("IN:");
-    for (size_t i = 0 ; i < 5; i++) {
-        printf(" %3.2f", global_input[i]);
+    for (size_t i = 0; i < N; i++) {
+        global_input[i] = frames[i].left;
     }
-    printf("\n");
+
+    /* printf("IN:"); */
+    /* for (size_t i = 0 ; i < 5; i++) { */
+    /*     printf(" %3.6f\t", global_input[i]); */
+    /* } */
+    /* printf("\n"); */
 }
 
 // Refreshes the references lost on the hot-reloading
