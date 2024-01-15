@@ -152,12 +152,6 @@ void plug_audio_callback(void * data, unsigned int frames_count)
     for (size_t i = 0; i < N; i++) {
         global_input[i] = frames[i].left;
     }
-
-    /* printf("IN:"); */
-    /* for (size_t i = 0 ; i < 5; i++) { */
-    /*     printf(" %3.6f\t", global_input[i]); */
-    /* } */
-    /* printf("\n"); */
 }
 
 // Refreshes the references lost on the hot-reloading
