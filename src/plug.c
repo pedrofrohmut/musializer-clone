@@ -21,6 +21,7 @@ const Color TEXT_COLOR       = C_LIGHT_GRAY;
 
 float * global_input;
 float complex * global_output;
+size_t global_n;
 
 // Call DrawTextEx with some values already set to simplify the call
 void draw_text(const Font font, const char * text, const Vector2 pos)
@@ -111,18 +112,18 @@ void plug_update(Plug * plug)
     // UI Text -------------------------------------------------------------------------------------
 
     // Draw Rectangles -----------------------------------------------------------------------------
-    fft(global_input, 1, global_output, N);
+    fft(global_input, 1, global_output, plug->n);
 
     float max_amp = 0.0f;
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < plug->n; i++) {
        float a = amp(global_output[i]);
        if (max_amp < a) max_amp = a;
     }
 
-    const float cell_width = plug->width / N;
+    const float cell_width = plug->width / plug->n;
     const float half_height = plug->height / 2;
 
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < plug->n; i++) {
        float t = amp(global_output[i]) / max_amp;
 
        const int pos_x = i * cell_width;
@@ -141,15 +142,16 @@ void plug_update(Plug * plug)
 // and keep a valid callback signature
 void plug_audio_callback(void * data, unsigned int frames_count)
 {
-    if (frames_count > N) frames_count = N;
+    if (data == NULL || frames_count == 0) {
+        fprintf(stderr, "No data in this iteration");
+        return;
+    }
 
-    assert(data != NULL);
-
-    /* log_debug("Plug audio. Frames: %d", frames_count); */
+    if (frames_count > global_n) frames_count = global_n;
 
     Frame * frames = (Frame *) data;
 
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < global_n; i++) {
         global_input[i] = frames[i].left;
     }
 }
@@ -157,7 +159,7 @@ void plug_audio_callback(void * data, unsigned int frames_count)
 // Refreshes the references lost on the hot-reloading
 void plug_reload(Plug * plug)
 {
-    log_debug("Plug reload");
     global_input = plug->in;
     global_output = plug->out;
+    global_n = plug->n;
 }

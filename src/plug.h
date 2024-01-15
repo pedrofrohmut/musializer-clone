@@ -4,8 +4,6 @@
 #include <complex.h>
 #include <raylib.h>
 
-#define N 256
-
 typedef struct {
     float left;  // Sample for left channel
     float right; // Sample for right channel
@@ -19,6 +17,7 @@ typedef struct {
     float music_len;     // Music total length
     Music music;         // Main music
 
+    size_t n;            // Number of sample to be processed
     float * in;          // Input buffer
     float complex * out; // Output buffer
 

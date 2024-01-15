@@ -69,8 +69,9 @@ void main_init(Plug * plug, const char * file_path)
 {
     plug->width = 800;
     plug->height = 600;
-    plug->in = (float *) calloc(N, sizeof(float));
-    plug->out = (float complex *) calloc(N, sizeof(float complex));
+    plug->n = 256;
+    plug->in = (float *) calloc(plug->n, sizeof(float));
+    plug->out = (float complex *) calloc(plug->n, sizeof(float complex));
 
     InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
@@ -81,7 +82,7 @@ void main_init(Plug * plug, const char * file_path)
 
     // Check music
     if (! IsMusicReady(plug->music)) {
-        log_error("Music is not ready");
+        fprintf(stderr, "Music is not ready");
         exit(1);
     }
 
@@ -98,7 +99,7 @@ void main_init(Plug * plug, const char * file_path)
 
     // Check font
     if (! IsFontReady(plug->font)) {
-        log_error("Fonts not loaded");
+        fprintf(stderr, "Fonts not loaded");
         exit(1);
     }
 }
@@ -123,7 +124,7 @@ char * shift_args(int * argc, char ***argv)
 {
     //assert(*argc > 0);
     if (*argc < 1) {
-        log_error("No argument provided for the Music file.");
+        fprintf(stderr, "No argument provided for the Music file.");
         exit(1);
     }
     char * result = (**argv);
@@ -149,7 +150,10 @@ int main(int argc, char **argv)
 {
     Plug plug;
 
-    if (!reload_libplug(&plug)) return 1;
+    if (!reload_libplug(&plug)) {
+        fprintf(stderr, "Could not load libplug.so. That is required for This app to work.\n");
+        return 1;
+    }
 
     const char * file_path = get_file_path(argc, argv);
 
