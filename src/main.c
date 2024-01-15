@@ -66,26 +66,14 @@ bool reload_libplug(Plug * plug)
     return true;
 }
 
-bool main_init(Plug * plug, const char * file_path)
+void main_init(Plug * plug, const char * file_path)
 {
-    // Init input buffer
-    plug->in = malloc(sizeof(float) * N);
-    for (int i = 0; i < N; i++) {
-        plug->in[i] = (i + 1) * 2;
-    }
+    plug->width = 800;
+    plug->height = 600;
+    plug->in = (float *) calloc(N, sizeof(float));
+    plug->out = (float complex *) calloc(N, sizeof(float complex));
 
-    // Init output buffer
-    plug->out = malloc(sizeof(float complex) * N);
-    for (int i = 0; i < N; i++) {
-        plug->out[i] = (i + 1) * 5;
-    }
-
-    const float width = 800;
-    const float height = 600;
-    plug->height = height;
-    plug->width = width;
-
-    InitWindow(width, height, "Musializer");
+    InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
     InitAudioDevice();
 
@@ -98,6 +86,12 @@ bool main_init(Plug * plug, const char * file_path)
         exit(1);
     }
 
+    plug->music_len = GetMusicTimeLength(plug->music);
+    plug->curr_volume = 0.5f;
+    SetMusicVolume(plug->music, plug->curr_volume);
+    AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+    PlayMusicStream(plug->music); // For testing can remove later
+
     // Load font
     const int font_size = 35;
     const int glyph_count = 250;
@@ -108,27 +102,22 @@ bool main_init(Plug * plug, const char * file_path)
         log_error("Fonts not loaded");
         exit(1);
     }
-
-    plug->music_len = GetMusicTimeLength(plug->music);
-    plug->curr_volume = 0.5f;
-    SetMusicVolume(plug->music, plug->curr_volume);
-
-    AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-
-    PlayMusicStream(plug->music); // For testing can remove later
-    return true;
 }
 
-bool unload_and_close(Plug * plug)
+void unload_and_close(Plug * plug)
 {
-    free(plug->in);
-    free(plug->out);
-
+    // Raylib
     UnloadMusicStream(plug->music);
     UnloadFont(plug->font);
     CloseAudioDevice();
     CloseWindow();
-    return true;
+
+    // Plug lib and state
+    free(plug->in);
+    free(plug->out);
+
+    // Close handle for libplug
+    dlclose(libplug);
 }
 
 char * shift_args(int * argc, char ***argv)

@@ -9,13 +9,24 @@
 #include "plug.h"
 #include "raylib.h"
 
+#define C_DARK_GRAY     CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
+#define C_LIGHT_GRAY    CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
+#define C_MATRIX_GREEN  CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
+#define C_MATRIX_PURPLE CLITERAL(Color){ 0x99, 0x00, 0xCC, 0xFF } // Matrix Purple
+
+const Color BACKGROUND_COLOR = C_DARK_GRAY;
+const Color RECT_COLOR       = C_MATRIX_GREEN;
+const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
+const Color TEXT_COLOR       = C_LIGHT_GRAY;
+
 float * global_input;
 float complex * global_output;
 
 // Call DrawTextEx with some values already set to simplify the call
 void draw_text(const Font font, const char * text, const Vector2 pos)
 {
-    DrawTextEx(font, text, pos, (float) font.baseSize, TEXT_SPACING, TEXT_COLOR);
+    const float text_spacing = 2.0f;
+    DrawTextEx(font, text, pos, (float) font.baseSize, text_spacing, TEXT_COLOR);
 }
 
 void check_key_pressed(Plug * plug)

@@ -4,41 +4,25 @@
 #include <complex.h>
 #include <raylib.h>
 
-#define C_DARK_GRAY     CLITERAL(Color){ 0x23, 0x23, 0x23, 0xFF } // Dark  Gray
-#define C_LIGHT_GRAY    CLITERAL(Color){ 0xCC, 0xCC, 0xCC, 0xFF } // Light Gray
-#define C_MATRIX_GREEN  CLITERAL(Color){ 0x66, 0xFF, 0x33, 0xFF } // Matrix Green
-#define C_MATRIX_PURPLE CLITERAL(Color){ 0x99, 0x00, 0xCC, 0xFF } // Matrix Purple
-
-const Color BACKGROUND_COLOR = C_DARK_GRAY;
-const Color TEXT_COLOR       = C_LIGHT_GRAY;
-const Color RECT_COLOR       = C_MATRIX_GREEN;
-const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
-
-const float TEXT_SPACING = 2.0f;
-
 #define N 256
 
 typedef struct {
-    float left;
-    float right;
+    float left;  // Sample for left channel
+    float right; // Sample for right channel
 } Frame;
 
 typedef struct {
-    // Window
-    float height;
-    float width;
+    float height;        // Window height
+    float width;         // Window width
 
-    // Music
-    float curr_volume;
-    float music_len;
-    Music music;
+    float curr_volume;   // Music current volume
+    float music_len;     // Music total length
+    Music music;         // Main music
 
-    // Audio Samples
-    float * in;
-    float complex * out;
+    float * in;          // Input buffer
+    float complex * out; // Output buffer
 
-    // Font
-    Font font;
+    Font font;           // Font loaded to be used on drawing
 } Plug;
 
 // Run on every loop
