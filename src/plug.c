@@ -19,8 +19,9 @@ const Color RECT_COLOR       = C_MATRIX_GREEN;
 const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
 const Color TEXT_COLOR       = C_LIGHT_GRAY;
 
+// TODO: looks like global_output does not need to be here. Trying remove in the future
+//float complex * global_output;
 float * global_input;
-float complex * global_output;
 size_t global_n;
 
 // Call DrawTextEx with some values already set to simplify the call
@@ -30,7 +31,7 @@ void draw_text(const Font font, const char * text, const Vector2 pos)
     DrawTextEx(font, text, pos, (float) font.baseSize, text_spacing, TEXT_COLOR);
 }
 
-void check_key_pressed(Plug * plug)
+void check_key_pressed(PlugState * plug)
 {
     if (IsKeyPressed(KEY_ENTER)) { // Start / Restart
         StopMusicStream(plug->music);
@@ -76,7 +77,7 @@ void fft(float in[], size_t step, float complex out[], size_t n)
     }
 }
 
-float amp(float x)
+float calc_amp(float x)
 {
     float a = fabsf(crealf(x));
     float b = fabsf(cimagf(x));
@@ -84,11 +85,35 @@ float amp(float x)
     return a;
 }
 
-void plug_update(Plug * plug)
+float calculate_normalizer(PlugState * plug, float freq, float next_freq, float max_amp)
+{
+    // Calculate the avarage for this amplitudes interval
+    float amps_acc = 0.0f;
+    size_t q = (size_t) freq;
+    while (q < plug->n && q < (size_t) next_freq) {
+        amps_acc += calc_amp(plug->out[q]);
+        q++;
+    }
+    float amps_avarage = amps_acc / ((size_t)next_freq - (size_t)freq + 1);
+
+    // Value between 0..1 to set rect height
+    float normalizer  = amps_avarage / max_amp;
+
+    return normalizer;
+}
+
+void plug_update(PlugState * plug)
 {
     UpdateMusicStream(plug->music);
 
     check_key_pressed(plug);
+
+#if 1 // Usefull for development
+    char title[50];
+    snprintf(title, sizeof(title), "Musializer (N: %zu)", plug->n);
+#else
+    const char * title = "Musializer";
+#endif
 
     // Makes the text for: (<volume>) <current_time> / <total_time>
     char str_vol_temp[50];
@@ -100,7 +125,7 @@ void plug_update(Plug * plug)
 
     // UI Text -------------------------------------------------------------------------------------
     // App title
-    draw_text(plug->font, "Musializer", (Vector2) { 30, 24 });
+    draw_text(plug->font, title, (Vector2) { 30, 24 });
     // Is it playing or not feedback
     if (IsMusicStreamPlaying(plug->music)) {
         draw_text(plug->font, "Playing...", (Vector2) { 30, plug->height - 55 });
@@ -112,34 +137,38 @@ void plug_update(Plug * plug)
     // UI Text -------------------------------------------------------------------------------------
 
     // Draw Rectangles -----------------------------------------------------------------------------
-    fft(global_input, 1, global_output, plug->n);
+    fft(global_input, 1, plug->out, plug->n);
 
     float max_amp = 0.0f;
     for (size_t i = 0; i < plug->n; i++) {
-       float a = amp(global_output[i]);
-       if (max_amp < a) max_amp = a;
+       float amp = calc_amp(plug->out[i]);
+       if (max_amp < amp) max_amp = amp;
     }
 
-    const float cell_width = plug->width / plug->n;
     const float half_height = plug->height / 2;
+    const float cell_width =plug->width / plug->m;
 
-    for (size_t i = 0; i < plug->n; i++) {
-       float t = amp(global_output[i]) / max_amp;
+    float freq = 20.0f;
+    for (size_t i = 0; i < plug->m; i++) {
+        float next_freq = freq * plug->step;
 
-       const int pos_x = i * cell_width;
-       const int pos_y = half_height - (half_height * t);
-       const int rect_width = cell_width;
-       const int rect_height = half_height * t;
+        float normalizer  = calculate_normalizer(plug, freq, next_freq, max_amp);
 
-       DrawRectangle(pos_x, pos_y, rect_width, rect_height, LIME);
+        // Draw Rect with calculated amps_avarage
+        const float pos_x = i * cell_width;
+        const float pos_y = half_height - (half_height * normalizer);
+        const int rect_width = cell_width;
+        const int rect_height = half_height * normalizer;
+        DrawRectangle(pos_x, pos_y, rect_width, rect_height, PURPLE);
+
+        freq = next_freq;
     }
     // Draw Rectangles -----------------------------------------------------------------------------
 
     EndDrawing(); // ###############################################################################
 }
 
-// Must use global_input and global_output because you cannot access the Plug
-// and keep a valid callback signature
+// Must use global_input because you cannot pass the Plug and keep a valid callback signature
 void plug_audio_callback(void * data, unsigned int frames_count)
 {
     if (data == NULL || frames_count == 0) {
@@ -147,19 +176,20 @@ void plug_audio_callback(void * data, unsigned int frames_count)
         return;
     }
 
+    // global_input has global_n length
     if (frames_count > global_n) frames_count = global_n;
 
     Frame * frames = (Frame *) data;
 
-    for (size_t i = 0; i < global_n; i++) {
+    for (size_t i = 0; i < frames_count; i++) {
         global_input[i] = frames[i].left;
     }
 }
 
 // Refreshes the references lost on the hot-reloading
-void plug_reload(Plug * plug)
+void plug_reload(PlugState * plug)
 {
     global_input = plug->in;
-    global_output = plug->out;
+    //global_output = plug->out;
     global_n = plug->n;
 }

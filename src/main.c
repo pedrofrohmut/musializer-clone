@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <dlfcn.h> // POSIX only (dlopen, dlclose ...)
 #include <raylib.h>
+#include <math.h>
 
 #include "logger.h"
 #include "plug.h"
@@ -16,7 +17,7 @@
 plug_audio_callback_t plug_audio_callback = NULL;
 
 // Hot reloading: links to libplug.so
-bool reload_libplug(Plug * plug)
+bool reload_libplug(PlugState * plug)
 {
     if (plug != NULL
             && IsAudioStreamReady(plug->music.stream)
@@ -65,11 +66,24 @@ bool reload_libplug(Plug * plug)
     return true;
 }
 
-void main_init(Plug * plug, const char * file_path)
+size_t calculate_m(PlugState * plug)
+{
+    size_t count = 0;
+    float freq = 20.0f;
+    while (freq < plug->n) {
+        freq = freq * plug->step;
+        count++;
+    }
+    return count;
+}
+
+void main_init(PlugState * plug, const char * file_path)
 {
     plug->width = 800;
     plug->height = 600;
-    plug->n = 256;
+    plug->n = (size_t) 2 << 13; // about 16k
+    plug->step = 1.06f;
+    plug->m = calculate_m(plug);
     plug->in = (float *) calloc(plug->n, sizeof(float));
     plug->out = (float complex *) calloc(plug->n, sizeof(float complex));
 
@@ -87,7 +101,7 @@ void main_init(Plug * plug, const char * file_path)
     }
 
     plug->music_len = GetMusicTimeLength(plug->music);
-    plug->curr_volume = 0.5f;
+    plug->curr_volume = 0.0f;
     SetMusicVolume(plug->music, plug->curr_volume);
     AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     PlayMusicStream(plug->music); // For testing can remove later
@@ -104,7 +118,7 @@ void main_init(Plug * plug, const char * file_path)
     }
 }
 
-void unload_and_close(Plug * plug)
+void unload_and_close(PlugState * plug)
 {
     // Raylib
     UnloadMusicStream(plug->music);
@@ -122,7 +136,6 @@ void unload_and_close(Plug * plug)
 
 char * shift_args(int * argc, char ***argv)
 {
-    //assert(*argc > 0);
     if (*argc < 1) {
         fprintf(stderr, "No argument provided for the Music file.");
         exit(1);
@@ -148,7 +161,7 @@ const char * get_file_path(int argc, char ** argv)
 
 int main(int argc, char **argv)
 {
-    Plug plug;
+    PlugState plug;
 
     if (!reload_libplug(&plug)) {
         fprintf(stderr, "Could not load libplug.so. That is required for This app to work.\n");

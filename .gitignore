@@ -9,3 +9,4 @@ bin/*.o
 
 # Music
 resources/mp3
+resources/music
