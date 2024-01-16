@@ -12,10 +12,10 @@
 
 // TODO: maybe refactor all plug function pointers to be part of PlugState
 // Libplug: Must be a global variable to work (static lifetime)
-                           void * libplug = NULL;
-                plug_reload_t plug_reload = NULL;
-                plug_update_t plug_update = NULL;
-plug_audio_callback_t plug_audio_callback = NULL;
+                           static void * libplug = NULL;
+                static plug_reload_t plug_reload = NULL;
+                static plug_update_t plug_update = NULL;
+static plug_audio_callback_t plug_audio_callback = NULL;
 
 void pre_reload_libplug(PlugState * plug)
 {
@@ -76,12 +76,12 @@ bool reload_libplug(PlugState * plug)
     return true;
 }
 
-size_t calculate_m(PlugState * plug)
+size_t calculate_m(const size_t n, const float step)
 {
     size_t count = 0;
     float freq = 20.0f;
-    while (freq < plug->n) {
-        freq = freq * plug->step;
+    while (freq < n) {
+        freq = freq * step;
         count++;
     }
     return count;
@@ -89,17 +89,25 @@ size_t calculate_m(PlugState * plug)
 
 void main_init(PlugState * plug, const char * file_path)
 {
+    // Window
     plug->width = 800;
     plug->height = 600;
-    plug->n = (size_t) 2 << 13; // about 16k
-    plug->step = 1.06f;
-    plug->m = calculate_m(plug);
+
+    // Input/Output buffers
+    plug->n = (size_t) 2 << 13; // 2 << 13 == 16,384 (13 is default, min is 9)
     plug->in = (float *) calloc(plug->n, sizeof(float));
     plug->out = (float complex *) calloc(plug->n, sizeof(float complex));
+    plug->in_size = 0;
+
+    // Calculate frequencies
+    plug->step = 1.06f;
+    plug->m = calculate_m(plug->n, plug->step);
+
+    // Skip frames
     plug->skip_c = 0;
 
     InitWindow(plug->width, plug->height, "Musializer");
-    SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing
+    SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
     InitAudioDevice();
 
     // Load music
@@ -127,18 +135,20 @@ void main_init(PlugState * plug, const char * file_path)
         fprintf(stderr, "Fonts not loaded");
         exit(1);
     }
+
+    log_info("main app initialized");
 }
 
 void unload_and_close(PlugState * plug)
 {
     // Raylib
+    DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     UnloadMusicStream(plug->music);
     UnloadFont(plug->font);
     CloseAudioDevice();
     CloseWindow();
 
     // Plug lib and state
-    free(plug->in);
     free(plug->out);
 
     // Close handle for libplug

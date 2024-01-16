@@ -10,8 +10,8 @@ typedef struct {
 } Frame;
 
 typedef struct {
-    float height;        // Window height
     float width;         // Window width
+    float height;        // Window height
 
     Font font;           // Font loaded to be used on drawing
 
@@ -19,15 +19,15 @@ typedef struct {
     float music_len;     // Music total length
     Music music;         // Main music
 
-    float * in;          // Input buffer
-    float complex * out; // Output buffer
+    float * in;          // Input buffer for audio samples (left channel)
+    float complex * out; // Output buffer for FFT
+    size_t n;            // The size of input and output buffers
+    size_t in_size;      // Track filled part of input buffer
 
-    size_t n;            // Number of sample to be processed
-    size_t m;            // Number of frequencies
-    float step;          // From Frequency Table Formula
+    size_t m;            // Number of frequencies in the interval
+    float step;          // Constant from Frequency Table Formula
 
-    // Counter to skip frames
-    unsigned int skip_c;
+    unsigned int skip_c; // Counter to skip frames
 } PlugState;
 
 // Run on every loop
