@@ -96,6 +96,7 @@ void main_init(PlugState * plug, const char * file_path)
     plug->m = calculate_m(plug);
     plug->in = (float *) calloc(plug->n, sizeof(float));
     plug->out = (float complex *) calloc(plug->n, sizeof(float complex));
+    plug->skip_c = 0;
 
     InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(30); // FPS set to 60 to stop flikering the sound, 30 for testing

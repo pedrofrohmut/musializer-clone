@@ -135,7 +135,15 @@ void plug_update(PlugState * plug)
     // UI Text -------------------------------------------------------------------------------------
 
     // Draw Rectangles -----------------------------------------------------------------------------
-    fft(global_input, 1, plug->out, plug->n);
+
+    // Make the animation slower (skiping the change of plug->out)
+    const unsigned int skip_step = 2; // only fft on every third frame
+    if (plug->skip_c >= skip_step) {
+        plug->skip_c = 0;
+        fft(global_input, 1, plug->out, plug->n);
+    } else {
+        plug->skip_c++;
+    }
 
     float max_amp = 0.0f;
     for (size_t i = 0; i < plug->n; i++) {

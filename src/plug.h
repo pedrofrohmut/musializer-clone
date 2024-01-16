@@ -13,6 +13,8 @@ typedef struct {
     float height;        // Window height
     float width;         // Window width
 
+    Font font;           // Font loaded to be used on drawing
+
     float curr_volume;   // Music current volume
     float music_len;     // Music total length
     Music music;         // Main music
@@ -24,7 +26,8 @@ typedef struct {
     size_t m;            // Number of frequencies
     float step;          // From Frequency Table Formula
 
-    Font font;           // Font loaded to be used on drawing
+    // Counter to skip frames
+    unsigned int skip_c;
 } PlugState;
 
 // Run on every loop
