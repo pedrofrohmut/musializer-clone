@@ -157,7 +157,7 @@ void plug_update(PlugState * plug)
         const float pos_y = half_height - (half_height * normalizer);
         const int rect_width = cell_width;
         const int rect_height = half_height * normalizer;
-        DrawRectangle(pos_x, pos_y, rect_width, rect_height, PURPLE);
+        DrawRectangle(pos_x, pos_y, rect_width, rect_height, GOLD);
 
         freq = next_freq;
     }

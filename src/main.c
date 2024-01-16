@@ -19,9 +19,7 @@ plug_audio_callback_t plug_audio_callback = NULL;
 
 void pre_reload_libplug(PlugState * plug)
 {
-    if (plug != NULL
-            && IsAudioStreamReady(plug->music.stream)
-            && plug_audio_callback != NULL) {
+    if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
         // Detach the audio from the previous version of the callback function
         DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
@@ -32,7 +30,7 @@ void post_reload_libplug(PlugState * plug)
     // Reloads internal state of plug
     plug_reload(plug);
 
-    if (plug != NULL && IsAudioStreamReady(plug->music.stream)) {
+    if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
         // Attach the audio again to the new version
         AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
