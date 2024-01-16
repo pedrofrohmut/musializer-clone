@@ -20,11 +20,18 @@
 // value.
 
 // TODO: maybe refactor all plug function pointers to be part of PlugState
+
 // Libplug: Must be a global variable to work (static lifetime)
-                           static void * libplug = NULL;
-                static plug_reload_t plug_reload = NULL;
-                static plug_update_t plug_update = NULL;
-static plug_audio_callback_t plug_audio_callback = NULL;
+static void * libplug = NULL;
+
+// This macro auto generates the variables for the functions. You just add to plug.h List Macro
+#define PLUG(name) static name##_t name = NULL;
+LIST_OF_PLUGS
+#undef PLUG
+
+/*                 static plug_reload_t plug_reload = NULL; */
+/*                 static plug_update_t plug_update = NULL; */
+/* static plug_audio_callback_t plug_audio_callback = NULL; */
 
 void pre_reload_libplug(PlugState * plug)
 {
@@ -60,23 +67,15 @@ bool reload_libplug(PlugState * plug)
         return false;
     }
 
-    plug_reload = dlsym(libplug, "plug_reload");
-    if (plug_reload == NULL) {
-        fprintf(stderr, "ERROR: could not find plug_reload symbol in %s: %s\n", libplug_file_name, dlerror());
-        return false;
+    // This macro makes the dlsym of all the functions that is just copy/pasta anyway
+    #define PLUG(name) \
+    name = dlsym(libplug, #name); \
+    if (name == NULL) { \
+        fprintf(stderr, "ERROR: could not find name symbol in %s: %s\n", libplug_file_name, dlerror()); \
+        return false; \
     }
-
-    plug_update = dlsym(libplug, "plug_update");
-    if (plug_update == NULL) {
-        fprintf(stderr, "ERROR: could not find plug_update symbol in %s: %s\n", libplug_file_name, dlerror());
-        return false;
-    }
-
-    plug_audio_callback = dlsym(libplug, "plug_audio_callback");
-    if (plug_audio_callback == NULL) {
-        fprintf(stderr, "ERROR: could not find plug_audio_callback symbol in %s: %s\n", libplug_file_name, dlerror());
-        return false;
-    }
+    LIST_OF_PLUGS
+    #undef PLUG
 
     log_info("libplug.so Reloaded");
 

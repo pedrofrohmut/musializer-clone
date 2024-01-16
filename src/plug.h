@@ -39,4 +39,9 @@ typedef void (*plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
 // Reload the global variables for input and output
 typedef void (*plug_reload_t)(PlugState * plug);
 
+#define LIST_OF_PLUGS \
+    PLUG(plug_update) \
+    PLUG(plug_audio_callback) \
+    PLUG(plug_reload) \
+
 #endif//PLUG_H_
