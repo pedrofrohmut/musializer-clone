@@ -22,6 +22,10 @@ Link: [Youtube playlist](https://www.youtube.com/playlist?list=PLpM-Dvs8t0Vak1rr
 
 - Frequency Table: [Equations](https://pages.mtu.edu/~suits/NoteFreqCalcs.html)
 
+### Meta programming
+
+- X Macro: [Wikipedia](https://en.wikipedia.org/wiki/X_macro)
+
 ### Miscellaneous
 
 - Music used: [Youtube Channel](https://www.youtube.com/@nu11_ft)

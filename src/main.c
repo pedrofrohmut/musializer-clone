@@ -10,6 +10,15 @@
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
+// TODO: make the PlugState a global var of libplug.so
+// The plug_init creates it and returns a point to main
+// main can return the pointer to libplug on reload
+// > The state will belong to libplug.so and main will just hold the reference
+// and pass it back on plug_reload
+// > The instance will be created at plug_init and returned to main
+// > This wont change much functionality. but you wont have to places with the same
+// value.
+
 // TODO: maybe refactor all plug function pointers to be part of PlugState
 // Libplug: Must be a global variable to work (static lifetime)
                            static void * libplug = NULL;

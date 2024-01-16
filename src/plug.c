@@ -30,7 +30,7 @@ static size_t  global_input_size; // Track filled index of the input buffer
 void draw_text(const Font font, const char * text, const Vector2 pos)
 {
     const float text_spacing = 2.0f;
-    DrawTextEx(font, text, pos, (float) font.baseSize, text_spacing, TEXT_COLOR);
+    DrawTextEx(font, text, pos, (float) font.baseSize, text_spacing, DARKGRAY);
 }
 
 void check_key_pressed(PlugState * plug)
