@@ -108,7 +108,7 @@ void plug_update(PlugState * plug)
 
     check_key_pressed(plug);
 
-#if 1 // Usefull for development
+#if 0 // Usefull for development
     char title[50];
     snprintf(title, sizeof(title), "Musializer (N: %zu)", plug->n);
 #else
@@ -120,20 +120,18 @@ void plug_update(PlugState * plug)
     snprintf(str_vol_temp, sizeof(str_vol_temp), "(%2.0f) %3.0f / %3.0f",
              plug->curr_volume * 100, GetMusicTimePlayed(plug->music), plug->music_len);
 
+    const char * playing = IsMusicStreamPlaying(plug->music) ? "Playing..." : "Not playing";
+
     BeginDrawing(); //##############################################################################
     ClearBackground(BACKGROUND_COLOR);
 
     // UI Text -------------------------------------------------------------------------------------
     // App title
-    draw_text(plug->font, title, (Vector2) { 30, 24 });
+    draw_text(plug->font, title, (Vector2) { 15, plug->height - 40 });
     // Is it playing or not feedback
-    if (IsMusicStreamPlaying(plug->music)) {
-        draw_text(plug->font, "Playing...", (Vector2) { 30, plug->height - 55 });
-    } else {
-        draw_text(plug->font, "Not Playing.", (Vector2) { 30, plug->height - 55 });
-    }
+    draw_text(plug->font, playing, (Vector2) { plug->width - 320, plug->height - 40 });
     // Temp and Volume to the corner
-    draw_text(plug->font, str_vol_temp, (Vector2) { plug->width - 195, plug->height - 55 });
+    draw_text(plug->font, str_vol_temp, (Vector2) { plug->width - 168, plug->height - 40 });
     // UI Text -------------------------------------------------------------------------------------
 
     // Draw Rectangles -----------------------------------------------------------------------------

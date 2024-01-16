@@ -40,5 +40,5 @@ main: src/main.c
 	@echo -e "OK > build/muzializer.out built with no errors"
 
 debug: src/main.c
-	${CC} ${CFLAGS} -O0 -o ./build/debug_musializer.out ./src/main.c ./src/logger.c ${LIBS}
+	${CC} ${CFLAGS} -g -Werror -O0 -o ./build/debug_musializer.out ./src/main.c ./src/logger.c ${LIBS}
 	@echo -e "OK > build/debug_muzializer.out built with no errors"

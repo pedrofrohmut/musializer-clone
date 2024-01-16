@@ -10,14 +10,14 @@
 
 #define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
+// TODO: maybe refactor all plug function pointers to be part of PlugState
 // Libplug: Must be a global variable to work (static lifetime)
                            void * libplug = NULL;
                 plug_reload_t plug_reload = NULL;
                 plug_update_t plug_update = NULL;
 plug_audio_callback_t plug_audio_callback = NULL;
 
-// Hot reloading: links to libplug.so
-bool reload_libplug(PlugState * plug)
+void pre_reload_libplug(PlugState * plug)
 {
     if (plug != NULL
             && IsAudioStreamReady(plug->music.stream)
@@ -25,6 +25,23 @@ bool reload_libplug(PlugState * plug)
         // Detach the audio from the previous version of the callback function
         DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
+}
+
+void post_reload_libplug(PlugState * plug)
+{
+    // Reloads internal state of plug
+    plug_reload(plug);
+
+    if (plug != NULL && IsAudioStreamReady(plug->music.stream)) {
+        // Attach the audio again to the new version
+        AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+    }
+}
+
+// Hot reloading: links to libplug.so
+bool reload_libplug(PlugState * plug)
+{
+    pre_reload_libplug(plug);
 
     const char * libplug_file_name = "libplug.so";
 
@@ -54,15 +71,10 @@ bool reload_libplug(PlugState * plug)
         return false;
     }
 
-    // Reloads internal state of plug
-    plug_reload(plug);
-
-    if (plug != NULL && IsAudioStreamReady(plug->music.stream)) {
-        // Attach the audio again to the new version
-        AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-    }
-
     log_info("libplug.so Reloaded");
+
+    post_reload_libplug(plug);
+
     return true;
 }
 
@@ -107,7 +119,7 @@ void main_init(PlugState * plug, const char * file_path)
     PlayMusicStream(plug->music); // For testing can remove later
 
     // Load font
-    const int font_size = 35;
+    const int font_size = 30;
     const int glyph_count = 250;
     plug->font = LoadFontEx("./resources/fonts/NotoSans-Regular.ttf", font_size, 0, glyph_count);
 
@@ -159,6 +171,9 @@ const char * get_file_path(int argc, char ** argv)
     return file_path;
 }
 
+// TODO: Write my own Attach Detach Functions that accept callback like:
+// typedef void (* audio_callback_t)(void * bufferData, unsigned int frames_c, PlugState * plug)
+// typedef void (*AudioCallback)(void *bufferData, unsigned int frames);
 int main(int argc, char **argv)
 {
     PlugState plug;
