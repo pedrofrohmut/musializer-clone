@@ -55,8 +55,6 @@ int main()
     float in[N]; // input buffer (samples)
     float complex out[N]; // output buffer (frequencies)
 
-    // TODO: for loop to make the t_array then use it instead of calculating every time
-
     for (size_t i = 0; i < N; i++) {
         float t = (float) i / N;
         in[i] = cosf(2 * pi * t * 1) + sinf(2 * pi * t * 2); // Mixing 1 hertz and 2 hertz

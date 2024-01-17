@@ -84,7 +84,6 @@ int main()
 {
     pi = atan2f(1, 1) * 4; // Fortran method to calc the PI
 
-    // TODO: for loop to make the t_array then use it instead of calculating every time
     const size_t N = 4096; // number of samples
     float in[N]; // input buffer (samples)
     float complex out[N]; // output buffer (frequencies)

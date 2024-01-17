@@ -85,7 +85,8 @@ void plug_load_music(PlugState * plug, const char * file_path)
 
     // Setup
     plug->music_len = GetMusicTimeLength(plug->music);
-    // TODO: check volume on drop
+    plug->curr_time = GetMusicTimePlayed(plug->music);
+    SetMusicVolume(plug->music, plug->curr_volume);
 }
 
 void plug_set_playing(PlugState * plug, bool is_playing)
@@ -215,11 +216,18 @@ void main_update(PlugState * plug)
         FilePathList droppedFiles = LoadDroppedFiles();
         if (droppedFiles.count > 0) {
             StopMusicStream(plug->music);
+            DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
             UnloadMusicStream(plug->music);
 
             const char * file_path = droppedFiles.paths[0];
             plug_load_music(plug, file_path);
 
+            if (! IsMusicReady(plug->music)) {
+                fprintf(stderr, "Music could not be loaded on file drop: %s", file_path);
+                exit(1);
+            }
+
+            AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
             PlayMusicStream(plug->music);
         }
         UnloadDroppedFiles(droppedFiles);
@@ -233,11 +241,6 @@ void main_update(PlugState * plug)
                  plug->curr_volume * 100, updated_music_time, plug->music_len);
         plug->curr_time = updated_music_time;
     }
-
-#if 0 //TODO: delete it below
-    const char * playing = IsMusicStreamPlaying(plug->music) ? "Playing..." : "Not playing";
-    plug->str.play_state = playing;
-#endif
 }
 
 void main_draw(PlugState * plug)
