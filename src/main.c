@@ -158,10 +158,11 @@ void unload_and_close(PlugState * plug)
     CloseWindow();
 
     // Plug lib and state
-    free(plug->out);
+    if (plug->in != NULL) free(plug->in);
+    if (plug->out != NULL) free(plug->out);
 
     // Close handle for libplug
-    dlclose(libplug);
+    if (libplug != NULL) dlclose(libplug);
 }
 
 char * shift_args(int * argc, char ***argv)
