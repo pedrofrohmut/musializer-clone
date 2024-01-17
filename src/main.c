@@ -4,6 +4,7 @@
 #include <dlfcn.h> // POSIX only (dlopen, dlclose ...)
 #include <raylib.h>
 #include <math.h>
+#include <string.h>
 
 #include "logger.h"
 #include "plug.h"
@@ -29,6 +30,7 @@ static plug_reload_t         plug_reload         = NULL;
 static plug_update_t         plug_update         = NULL;
 static plug_audio_callback_t plug_audio_callback = NULL;
 static plug_load_music_t     plug_load_music     = NULL;
+static plug_set_playing_t    plug_set_playing    = NULL;
 
 void pre_reload_libplug(PlugState * plug)
 {
@@ -88,6 +90,12 @@ bool reload_libplug(PlugState * plug)
         return false;
     }
 
+    plug_set_playing = dlsym(libplug_handle, "plug_set_playing");
+    if (plug_set_playing == NULL) {
+        fprintf(stderr, "ERROR: could not find plug_set_playing symbol in %s: %s\n", libplug_file_name, dlerror());
+        return false;
+    }
+
     log_info("libplug.so Reloaded");
 
     post_reload_libplug(plug);
@@ -125,9 +133,10 @@ void main_init(PlugState * plug, const char * file_path)
     // Skip frames
     plug->skip_c = 0;
 
-    PlugStrings strings = {0};
-    strings.title = "Musializer";
-    plug->str = strings;
+    strncpy(plug->str.title, "Musializer", sizeof(plug->str.title));
+#ifdef DEV_ENV // String to print N on dev mode
+    snprintf(plug->str.n_str, sizeof(plug->str.n_str), "%zu", plug->n);
+#endif
 
     InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
@@ -138,6 +147,7 @@ void main_init(PlugState * plug, const char * file_path)
     SetMusicVolume(plug->music, plug->curr_volume);
     AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     PlayMusicStream(plug->music); // For testing can remove later
+    plug_set_playing(plug, true);
 
     // Load font
     const int font_size = 30;

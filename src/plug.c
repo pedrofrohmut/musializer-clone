@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
@@ -36,8 +37,8 @@ void plug_audio_callback(void * data, unsigned int frames_count)
     }
     assert(global_plug->n > frames_count);
 
-    /* Frame * frames = (Frame *) data; */
-    unsigned int channels = global_plug->music.stream.channels;
+    //### Frame * frames = (Frame *) data;
+    //### unsigned int channels = global_plug->music.stream.channels;
     frame_t * frames = data;
     const bool new_data_fits = frames_count <= (global_plug->n - global_plug->in_size);
 
@@ -67,10 +68,9 @@ void plug_audio_callback(void * data, unsigned int frames_count)
 
 void plug_load_music(PlugState * plug, const char * file_path)
 {
-    // Unload if any
-    if (IsMusicReady(plug->music)) {
-        DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-        UnloadMusicStream(plug->music);
+    if (!file_path || strcmp(file_path, "") == 0) {
+        fprintf(stderr, "File path not provided");
+        exit(1);
     }
 
     // Load music
@@ -85,7 +85,16 @@ void plug_load_music(PlugState * plug, const char * file_path)
 
     // Setup
     plug->music_len = GetMusicTimeLength(plug->music);
-    AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+    // TODO: check volume on drop
+}
+
+void plug_set_playing(PlugState * plug, bool is_playing)
+{
+    if (is_playing) {
+        strncpy(plug->str.play_state, "Playing...", sizeof(plug->str.play_state));
+    } else {
+        strncpy(plug->str.play_state, "Not Playing", sizeof(plug->str.play_state));
+    }
 }
 
 // Call DrawTextEx with some values already set to simplify the call
@@ -103,10 +112,13 @@ void check_key_pressed(PlugState * plug)
     }
 
     if (IsKeyPressed(KEY_SPACE)) { // Pause / Resume
-        if (IsMusicStreamPlaying(plug->music))
+        if (IsMusicStreamPlaying(plug->music)) {
             PauseMusicStream(plug->music);
-        else
+            plug_set_playing(plug, false);
+        } else {
             ResumeMusicStream(plug->music);
+            plug_set_playing(plug, true);
+        }
     }
 
     if (IsKeyPressed(KEY_MINUS) && plug->curr_volume > 0.0f) { // Decrease Volume
@@ -203,6 +215,7 @@ void main_update(PlugState * plug)
         FilePathList droppedFiles = LoadDroppedFiles();
         if (droppedFiles.count > 0) {
             StopMusicStream(plug->music);
+            UnloadMusicStream(plug->music);
 
             const char * file_path = droppedFiles.paths[0];
             plug_load_music(plug, file_path);
@@ -212,14 +225,19 @@ void main_update(PlugState * plug)
         UnloadDroppedFiles(droppedFiles);
     }
 
-    // Makes the text for: (<volume>) <current_time> / <total_time>
-    char vol_time[50];
-    snprintf(vol_time, sizeof(vol_time), "(%2.0f) %3.0f / %3.0f",
-             plug->curr_volume * 100, GetMusicTimePlayed(plug->music), plug->music_len);
-    plug->str.vol_time = vol_time;
+    // Only generate str on time change
+    float updated_music_time = GetMusicTimePlayed(plug->music);
+    if (updated_music_time - plug->curr_time > 0.2) { // update gap 200ms
+        // Makes the text for: (<volume>) <current_time> / <total_time>
+        snprintf(plug->str.vol_time, sizeof(plug->str.vol_time), "(%2.0f) %3.0f / %3.0f",
+                 plug->curr_volume * 100, updated_music_time, plug->music_len);
+        plug->curr_time = updated_music_time;
+    }
 
+#if 0 //TODO: delete it below
     const char * playing = IsMusicStreamPlaying(plug->music) ? "Playing..." : "Not playing";
     plug->str.play_state = playing;
+#endif
 }
 
 void main_draw(PlugState * plug)
@@ -233,12 +251,10 @@ void main_draw(PlugState * plug)
     // Is it playing or not feedback
     draw_text(plug->font, plug->str.play_state, (Vector2) { plug->width - 320, plug->height - 40 });
     // Temp and Volume to the corner
-    draw_text(plug->font, plug->str.vol_time, (Vector2) { plug->width - 168, plug->height - 40 });
-#ifdef DEV_ENV
-    char n_str[50];
-    snprintf(n_str, sizeof(n_str), "%zu", plug->n);
-    draw_text(plug->font, n_str, (Vector2) { 165, plug->height - 40 });
-#else
+    float extra_padding = plug->curr_time >= 100 ? 5 : 0;
+    draw_text(plug->font, plug->str.vol_time, (Vector2) { plug->width - 168 - extra_padding, plug->height - 40 });
+#ifdef DEV_ENV // String to print N on dev mode
+    draw_text(plug->font, plug->str.n_str, (Vector2) { 165, plug->height - 40 });
 #endif
     // UI Text -------------------------------------------------------------------------------------
 

@@ -4,6 +4,8 @@
 #include <complex.h>
 #include <raylib.h>
 
+#define MAX_STRING_LENGHT 100
+
 typedef struct {
     float left;          // Sample for left channel
     float right;         // Sample for right channel
@@ -12,9 +14,10 @@ typedef struct {
 typedef float frame_t[2];
 
 typedef struct {
-    const char * title;
-    const char * vol_time;
-    const char * play_state;
+    char title[MAX_STRING_LENGHT];
+    char vol_time[MAX_STRING_LENGHT];
+    char play_state[MAX_STRING_LENGHT];
+    char n_str[MAX_STRING_LENGHT];
 } PlugStrings;
 
 typedef struct {
@@ -24,6 +27,7 @@ typedef struct {
     Font font;           // Font loaded to be used on drawing
 
     float curr_volume;   // Music current volume
+    float curr_time;
     float music_len;     // Music total length
     Music music;         // Main music
 
@@ -51,6 +55,9 @@ typedef void (* plug_reload_t)(PlugState * plug);
 
 // Load a music file into the music stream
 typedef void (* plug_load_music_t)(PlugState * plug, const char * file_path);
+
+// Set time playing string
+typedef void (* plug_set_playing_t)(PlugState * plug, bool is_playing);
 
 //void plug_update(PlugState * plug);
 //void plug_audio_callback(void * data, unsigned int frames_count);
