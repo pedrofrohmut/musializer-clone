@@ -20,11 +20,15 @@
 // value.
 
 // TODO: maybe refactor all plug function pointers to be part of PlugState
+
 // Libplug: Must be a global variable to work (static lifetime)
-                           static void * libplug = NULL;
-                static plug_reload_t plug_reload = NULL;
-                static plug_update_t plug_update = NULL;
+static void * libplug_handle = NULL;
+
+// Plug methods
+static plug_reload_t         plug_reload         = NULL;
+static plug_update_t         plug_update         = NULL;
 static plug_audio_callback_t plug_audio_callback = NULL;
+static plug_load_music_t     plug_load_music     = NULL;
 
 void pre_reload_libplug(PlugState * plug)
 {
@@ -52,29 +56,35 @@ bool reload_libplug(PlugState * plug)
 
     const char * libplug_file_name = "libplug.so";
 
-    if (libplug != NULL) dlclose(libplug);
+    if (libplug_handle != NULL) dlclose(libplug_handle);
 
-    libplug = dlopen(libplug_file_name, RTLD_NOW);
-    if (libplug == NULL) {
+    libplug_handle = dlopen(libplug_file_name, RTLD_NOW);
+    if (libplug_handle == NULL) {
         fprintf(stderr, "ERROR: could not load %s: %s\n", libplug_file_name, dlerror());
         return false;
     }
 
-    plug_reload = dlsym(libplug, "plug_reload");
+    plug_reload = dlsym(libplug_handle, "plug_reload");
     if (plug_reload == NULL) {
         fprintf(stderr, "ERROR: could not find plug_reload symbol in %s: %s\n", libplug_file_name, dlerror());
         return false;
     }
 
-    plug_update = dlsym(libplug, "plug_update");
+    plug_update = dlsym(libplug_handle, "plug_update");
     if (plug_update == NULL) {
         fprintf(stderr, "ERROR: could not find plug_update symbol in %s: %s\n", libplug_file_name, dlerror());
         return false;
     }
 
-    plug_audio_callback = dlsym(libplug, "plug_audio_callback");
+    plug_audio_callback = dlsym(libplug_handle, "plug_audio_callback");
     if (plug_audio_callback == NULL) {
         fprintf(stderr, "ERROR: could not find plug_audio_callback symbol in %s: %s\n", libplug_file_name, dlerror());
+        return false;
+    }
+
+    plug_load_music = dlsym(libplug_handle, "plug_load_music");
+    if (plug_load_music == NULL) {
+        fprintf(stderr, "ERROR: could not find plug_load_music symbol in %s: %s\n", libplug_file_name, dlerror());
         return false;
     }
 
@@ -123,16 +133,7 @@ void main_init(PlugState * plug, const char * file_path)
     SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
     InitAudioDevice();
 
-    // Load music
-    plug->music = LoadMusicStream(file_path);
-
-    // Check music
-    if (! IsMusicReady(plug->music)) {
-        fprintf(stderr, "Music is not ready");
-        exit(1);
-    }
-
-    plug->music_len = GetMusicTimeLength(plug->music);
+    plug_load_music(plug, file_path);
     plug->curr_volume = 0.0f;
     SetMusicVolume(plug->music, plug->curr_volume);
     AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
@@ -165,7 +166,7 @@ void unload_and_close(PlugState * plug)
     if (plug->out != NULL) free(plug->out);
 
     // Close handle for libplug
-    if (libplug != NULL) dlclose(libplug);
+    if (libplug_handle != NULL) dlclose(libplug_handle);
 }
 
 char * shift_args(int * argc, char ***argv)

@@ -9,6 +9,8 @@ typedef struct {
     float right;         // Sample for right channel
 } Frame;
 
+typedef float frame_t[2];
+
 typedef struct {
     const char * title;
     const char * vol_time;
@@ -39,12 +41,20 @@ typedef struct {
 } PlugState;
 
 // Run on every loop
-typedef void (*plug_update_t)(PlugState * plug);
+typedef void (* plug_update_t)(PlugState * plug);
 
 // Attached to the music stream
-typedef void (*plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
+typedef void (* plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
 
 // Reload the global variables for input and output
-typedef void (*plug_reload_t)(PlugState * plug);
+typedef void (* plug_reload_t)(PlugState * plug);
+
+// Load a music file into the music stream
+typedef void (* plug_load_music_t)(PlugState * plug, const char * file_path);
+
+//void plug_update(PlugState * plug);
+//void plug_audio_callback(void * data, unsigned int frames_count);
+//void plug_reload(PlugState * plug);
+//void plug_load_music(PlugState * plug, const char * file_path);
 
 #endif//PLUG_H_

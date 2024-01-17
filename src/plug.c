@@ -19,12 +19,74 @@ const Color RECT_COLOR       = C_MATRIX_GREEN;
 const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
 const Color TEXT_COLOR       = C_LIGHT_GRAY;
 
-// TODO: looks like global_output does not need to be here. Trying remove in the future
-//float complex * global_output;
+static PlugState * global_plug;   // global reference to the plug (required for the audio_callback)
 
-static float * global_input;      // Reference to plug->in to be used by audio callback
-static size_t  global_n;          // Copy of plug->n to be used on audio callback
-static size_t  global_input_size; // Track filled index of the input buffer
+// Refreshes the references lost on the hot-reloading
+void plug_reload(PlugState * plug)
+{
+    global_plug = plug;
+}
+
+// Must use global_input because you cannot pass the Plug and keep a valid callback signature
+void plug_audio_callback(void * data, unsigned int frames_count)
+{
+    if (data == NULL || frames_count == 0) {
+        fprintf(stderr, "No data in this iteration");
+        return;
+    }
+    assert(global_plug->n > frames_count);
+
+    /* Frame * frames = (Frame *) data; */
+    unsigned int channels = global_plug->music.stream.channels;
+    frame_t * frames = data;
+    const bool new_data_fits = frames_count <= (global_plug->n - global_plug->in_size);
+
+    // Ring buffer
+    if (new_data_fits) {
+        // Append the data no moving
+        for (size_t i = 0; i < frames_count; i++) {
+            size_t index = global_plug->in_size + i;
+            global_plug->in[index] = frames[i][0]; // left channel
+            global_plug->in_size++;
+        }
+    } else {
+        global_plug->in_size = global_plug->n; // sets it as filled up
+
+        // Shift left to fit new
+        for (size_t i = 0; i < (global_plug->n - frames_count); i++) {
+            global_plug->in[i] = global_plug->in[i + frames_count];
+        }
+
+        // Append new data at the space shifted for it
+        for (size_t i = 0; i < frames_count; i++) {
+            size_t index = global_plug->n - frames_count + i;
+            global_plug->in[index] = frames[i][0]; // left channel
+        }
+    }
+}
+
+void plug_load_music(PlugState * plug, const char * file_path)
+{
+    // Unload if any
+    if (IsMusicReady(plug->music)) {
+        DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+        UnloadMusicStream(plug->music);
+    }
+
+    // Load music
+    plug->music = LoadMusicStream(file_path);
+
+    // Check music
+    if (! IsMusicReady(plug->music)) {
+        fprintf(stderr, "Music not loaded: %s", file_path);
+        exit(1);
+    }
+    assert(plug->music.stream.channels == 2);
+
+    // Setup
+    plug->music_len = GetMusicTimeLength(plug->music);
+    AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+}
 
 // Call DrawTextEx with some values already set to simplify the call
 void draw_text(const Font font, const char * text, const Vector2 pos)
@@ -116,7 +178,7 @@ void calc_fft(PlugState * plug)
         plug->skip_c++;
     }
 #else
-    fft(global_input, 1, plug->out, plug->n);
+    fft(plug->in, 1, plug->out, plug->n);
 #endif
 
 }
@@ -136,6 +198,19 @@ void main_update(PlugState * plug)
     UpdateMusicStream(plug->music);
 
     check_key_pressed(plug);
+
+    if (IsFileDropped()) {
+        FilePathList droppedFiles = LoadDroppedFiles();
+        if (droppedFiles.count > 0) {
+            StopMusicStream(plug->music);
+
+            const char * file_path = droppedFiles.paths[0];
+            plug_load_music(plug, file_path);
+
+            PlayMusicStream(plug->music);
+        }
+        UnloadDroppedFiles(droppedFiles);
+    }
 
     // Makes the text for: (<volume>) <current_time> / <total_time>
     char vol_time[50];
@@ -198,51 +273,4 @@ void plug_update(PlugState * plug)
 {
     main_update(plug);
     main_draw(plug);
-}
-
-// Must use global_input because you cannot pass the Plug and keep a valid callback signature
-void plug_audio_callback(void * data, unsigned int frames_count)
-{
-    if (data == NULL || frames_count == 0) {
-        fprintf(stderr, "No data in this iteration");
-        return;
-    }
-
-    assert(global_n > frames_count);
-
-    Frame * frames = (Frame *) data;
-
-    const bool new_data_fits = frames_count <= (global_n - global_input_size);
-
-    // Ring buffer
-    if (new_data_fits) {
-        // Append the data no moving
-        for (size_t i = 0; i < frames_count; i++) {
-            size_t index = global_input_size + i;
-            global_input[index] = frames[i].left;
-            global_input_size++;
-        }
-    } else {
-        global_input_size = global_n; // sets it as filled up
-
-        // Shift left to fit new
-        for (size_t i = 0; i < (global_n - frames_count); i++) {
-            global_input[i] = global_input[i + frames_count];
-        }
-
-        // Append new data at the space shifted for it
-        for (size_t i = 0; i < frames_count; i++) {
-            size_t index = global_n - frames_count + i;
-            global_input[index] = frames[i].left;
-        }
-    }
-}
-
-// Refreshes the references lost on the hot-reloading
-void plug_reload(PlugState * plug)
-{
-    global_n = plug->n;
-    global_input = plug->in;
-    global_input_size = plug->in_size;
-    //global_output = plug->out;
 }

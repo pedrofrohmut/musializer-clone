@@ -31,3 +31,5 @@ Link: [Youtube playlist](https://www.youtube.com/playlist?list=PLpM-Dvs8t0Vak1rr
 - Music used: [Youtube Channel](https://www.youtube.com/@nu11_ft)
 
 - Flywaydb: [Database Migrations](https://flywaydb.org/)
+
+- C gibberish ↔ English: [Cdecl Web Site](https://cdecl.org/)
