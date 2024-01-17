@@ -31,13 +31,13 @@ typedef struct {
 } PlugState;
 
 // Run on every loop
-typedef void (*plug_update_t)(PlugState * plug);
+typedef void (plug_update_t)(PlugState * plug);
 
 // Attached to the music stream
-typedef void (*plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
+typedef void (plug_audio_callback_t)(void * dataBuffer, unsigned int frames);
 
 // Reload the global variables for input and output
-typedef void (*plug_reload_t)(PlugState * plug);
+typedef void (plug_reload_t)(PlugState * plug);
 
 #define LIST_OF_PLUGS \
     PLUG(plug_update) \

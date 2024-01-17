@@ -138,9 +138,9 @@ void plug_update(PlugState * plug)
 
     // Draw Rectangles -----------------------------------------------------------------------------
 
-#if 0 // If needed to skip frames
+#if 1 // If needed to skip frames
     // Make the animation slower (skiping the change of plug->out)
-    const unsigned int skip_step = 1; // only fft on every (n + 1) frames
+    const unsigned int skip_step = 2; // only fft on every (n + 1) frames
     if (plug->skip_c >= skip_step) {
         plug->skip_c = 0;
         fft(global_input, 1, plug->out, plug->n);
@@ -171,7 +171,7 @@ void plug_update(PlugState * plug)
         const float pos_y = half_height - (half_height * normalizer);
         const int rect_width = cell_width;
         const int rect_height = half_height * normalizer;
-        DrawRectangle(pos_x, pos_y, rect_width, rect_height, SKYBLUE);
+        DrawRectangle(pos_x, pos_y, rect_width, rect_height, GREEN);
 
         freq = next_freq;
     }

@@ -24,15 +24,27 @@
 // Libplug: Must be a global variable to work (static lifetime)
 static void * libplug = NULL;
 
+
 // This macro auto generates the variables for the functions. You just add to plug.h List Macro
-#define PLUG(name) static name##_t name = NULL;
+#ifdef HOT_RELOAD
+
+#define PLUG(name) static name##_t * name = NULL;
 LIST_OF_PLUGS
 #undef PLUG
+
+#else
+
+#define PLUG(name) static name##_t name;
+LIST_OF_PLUGS
+#undef PLUG
+
+#endif
 
 /*                 static plug_reload_t plug_reload = NULL; */
 /*                 static plug_update_t plug_update = NULL; */
 /* static plug_audio_callback_t plug_audio_callback = NULL; */
 
+#ifdef HOT_RELOAD
 void pre_reload_libplug(PlugState * plug)
 {
     if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
@@ -83,6 +95,9 @@ bool reload_libplug(PlugState * plug)
 
     return true;
 }
+#else
+bool reload_libplug(PlugState * plug) { return true; }
+#endif
 
 size_t calculate_m(const size_t n, const float step)
 {
@@ -160,7 +175,7 @@ void unload_and_close(PlugState * plug)
     free(plug->out);
 
     // Close handle for libplug
-    dlclose(libplug);
+    if (libplug != NULL) dlclose(libplug);
 }
 
 char * shift_args(int * argc, char ***argv)

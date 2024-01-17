@@ -17,7 +17,7 @@ CC = gcc
 #   -Wextra (Enable more warnings no covered by -Wall)
 CFLAGS = -Wall -Wextra -std=c99 $(pkg-config --cflags raylib)
 
-LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread  -L./build/
+LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread -L./build/
 
 all: clean logger plug main
 
@@ -31,14 +31,23 @@ logger: src/logger.c
 	${CC} ${CFLAGS} -c src/logger.c -o bin/logger.o
 	@echo -e "OK > bin/logger.o built into binaries\n"
 
+# -fPIC -shared are the flag tha makes the output into a shared library
 plug: src/plug.c
 	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
 	@echo -e "OK > build/libplug.so built with no errors\n"
 
+# -DHOT_RELOAD define the HOT_RELOAD macro as true
 main: src/main.c
-	${CC} ${CFLAGS} -o ./build/musializer.out ./src/main.c ./bin/logger.o ${LIBS}
+	${CC} ${CFLAGS} -DHOT_RELOAD -o ./build/main.out ./src/main.c ./bin/logger.o ${LIBS}
+	@echo -e "OK > build/main.out built with no errors"
+
+# ggdb: debug info for gdb, -Og: Optimization made for debug, -Werror: treat warnings as errors
+debug: src/main.c
+	${CC} ${CFLAGS} -ggdb -Werror -Og -o ./build/debug.out ./src/main.c ./src/logger.c ${LIBS}
+	@echo -e "OK > build/debug.out built with no errors"
+
+# Static link with plug and logger
+dist:
+	${CC} ${CFLAGS} -o ./build/musializer.out ./src/plug.c ./src/logger.c ./src/main.c ${LIBS}
 	@echo -e "OK > build/muzializer.out built with no errors"
 
-debug: src/main.c
-	${CC} ${CFLAGS} -g -Werror -O0 -o ./build/debug_musializer.out ./src/main.c ./src/logger.c ${LIBS}
-	@echo -e "OK > build/debug_muzializer.out built with no errors"
