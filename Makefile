@@ -21,11 +21,11 @@ LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread -L./build/
 
 all: clean dist
 
-dev: plug main_dev
+dev: plug_dev main_dev
 
 debug: logger plug main_debug
 
-dist: main_dist
+dist: plug_dist main_dist
 
 clean:
 	rm -f bin/*.o
@@ -46,8 +46,13 @@ logger: src/logger.c
 
 ### DEV ############################################################################################
 
+# -fPIC -shared are the flag tha makes the output into a shared library
+plug_dev: src/plug.c
+	${CC} ${CFLAGS} -DDEV_ENV -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
+	@echo -e "OK > build/libplug.so built with no errors\n"
+
 main_dev: src/main.c
-	${CC} ${CFLAGS} -o ./build/dev.out ./src/main.c ./bin/logger.o ${LIBS}
+	${CC} ${CFLAGS} -DDEV_ENV -o ./build/dev.out ./src/main.c ./bin/logger.o ${LIBS}
 	@echo -e "OK > build/dev.out built with no errors"
 
 ### DEBUG ##########################################################################################
@@ -58,6 +63,11 @@ main_debug: src/main.c
 	@echo -e "OK > build/debug.out built with no errors"
 
 ### DISTRIBUTION/PRODUCTION ########################################################################
+
+# -fPIC -shared are the flag tha makes the output into a shared library
+plug_dist: src/plug.c
+	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared ./src/plug.c ./src/logger.c ${LIBS}
+	@echo -e "OK > build/libplug.so built with no errors\n"
 
 # Static link with plug and logger
 main_dist:

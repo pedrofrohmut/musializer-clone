@@ -104,41 +104,9 @@ float calc_normalizer(PlugState * plug, float freq, float next_freq, float max_a
     return normalizer;
 }
 
-void plug_update(PlugState * plug)
+void calc_fft(PlugState * plug)
 {
-    UpdateMusicStream(plug->music);
-
-    check_key_pressed(plug);
-
-#if 1 // Show n in the app (debug)
-    char title[50];
-    snprintf(title, sizeof(title), "Musializer (N: %zu)", plug->n);
-#else
-    const char * title = "Musializer";
-#endif
-
-    // Makes the text for: (<volume>) <current_time> / <total_time>
-    char str_vol_temp[50];
-    snprintf(str_vol_temp, sizeof(str_vol_temp), "(%2.0f) %3.0f / %3.0f",
-             plug->curr_volume * 100, GetMusicTimePlayed(plug->music), plug->music_len);
-
-    const char * playing = IsMusicStreamPlaying(plug->music) ? "Playing..." : "Not playing";
-
-    BeginDrawing(); //##############################################################################
-    ClearBackground(BACKGROUND_COLOR);
-
-    // UI Text -------------------------------------------------------------------------------------
-    // App title
-    draw_text(plug->font, title, (Vector2) { 15, plug->height - 40 });
-    // Is it playing or not feedback
-    draw_text(plug->font, playing, (Vector2) { plug->width - 320, plug->height - 40 });
-    // Temp and Volume to the corner
-    draw_text(plug->font, str_vol_temp, (Vector2) { plug->width - 168, plug->height - 40 });
-    // UI Text -------------------------------------------------------------------------------------
-
-    // Draw Rectangles -----------------------------------------------------------------------------
-
-#if 0 // If needed to skip frames
+#if 0
     // Make the animation slower (skiping the change of plug->out)
     const unsigned int skip_step = 1; // only fft on every (n + 1) frames
     if (plug->skip_c >= skip_step) {
@@ -151,17 +119,63 @@ void plug_update(PlugState * plug)
     fft(global_input, 1, plug->out, plug->n);
 #endif
 
+}
+
+float calc_max_amp(PlugState * plug)
+{
     float max_amp = 0.0f;
     for (size_t i = 0; i < plug->n; i++) {
        float amp = calc_amp(plug->out[i]);
        if (max_amp < amp) max_amp = amp;
     }
+    return max_amp;
+}
 
+void main_update(PlugState * plug)
+{
+    UpdateMusicStream(plug->music);
+
+    check_key_pressed(plug);
+
+    // Makes the text for: (<volume>) <current_time> / <total_time>
+    char vol_time[50];
+    snprintf(vol_time, sizeof(vol_time), "(%2.0f) %3.0f / %3.0f",
+             plug->curr_volume * 100, GetMusicTimePlayed(plug->music), plug->music_len);
+    plug->str.vol_time = vol_time;
+
+    const char * playing = IsMusicStreamPlaying(plug->music) ? "Playing..." : "Not playing";
+    plug->str.play_state = playing;
+}
+
+void main_draw(PlugState * plug)
+{
+    BeginDrawing(); //##############################################################################
+    ClearBackground(BACKGROUND_COLOR);
+
+    // UI Text -------------------------------------------------------------------------------------
+    // App title
+    draw_text(plug->font, plug->str.title, (Vector2) { 15, plug->height - 40 });
+    // Is it playing or not feedback
+    draw_text(plug->font, plug->str.play_state, (Vector2) { plug->width - 320, plug->height - 40 });
+    // Temp and Volume to the corner
+    draw_text(plug->font, plug->str.vol_time, (Vector2) { plug->width - 168, plug->height - 40 });
+#ifdef DEV_ENV
+    char n_str[50];
+    snprintf(n_str, sizeof(n_str), "%zu", plug->n);
+    draw_text(plug->font, n_str, (Vector2) { 165, plug->height - 40 });
+#else
+#endif
+    // UI Text -------------------------------------------------------------------------------------
+
+    // TODO: Draw -> check if can skip calculations on skip frames on
+    // Draw Rectangles -----------------------------------------------------------------------------
+    calc_fft(plug);
+    const float max_amp = calc_max_amp(plug);
     const float half_height = plug->height / 2;
-    const float cell_width =plug->width / plug->m;
+    const float cell_width = plug->width / plug->m;
 
     float freq = 20.0f;
-    for (size_t i = 0; i < plug->m; i++) {
+    for (size_t i = 0; i < plug->m; i++) { // Iterate through m frequencies
         float next_freq = freq * plug->step;
 
         float normalizer  = calc_normalizer(plug, freq, next_freq, max_amp);
@@ -178,6 +192,12 @@ void plug_update(PlugState * plug)
     // Draw Rectangles -----------------------------------------------------------------------------
 
     EndDrawing(); // ###############################################################################
+}
+
+void plug_update(PlugState * plug)
+{
+    main_update(plug);
+    main_draw(plug);
 }
 
 // Must use global_input because you cannot pass the Plug and keep a valid callback signature

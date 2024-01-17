@@ -115,6 +115,10 @@ void main_init(PlugState * plug, const char * file_path)
     // Skip frames
     plug->skip_c = 0;
 
+    PlugStrings strings = {0};
+    strings.title = "Musializer";
+    plug->str = strings;
+
     InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
     InitAudioDevice();
@@ -158,7 +162,6 @@ void unload_and_close(PlugState * plug)
     CloseWindow();
 
     // Plug lib and state
-    if (plug->in != NULL) free(plug->in);
     if (plug->out != NULL) free(plug->out);
 
     // Close handle for libplug

@@ -10,6 +10,12 @@ typedef struct {
 } Frame;
 
 typedef struct {
+    const char * title;
+    const char * vol_time;
+    const char * play_state;
+} PlugStrings;
+
+typedef struct {
     float width;         // Window width
     float height;        // Window height
 
@@ -28,6 +34,8 @@ typedef struct {
     float step;          // Constant from Frequency Table Formula
 
     unsigned int skip_c; // Counter to skip frames
+
+    PlugStrings str;
 } PlugState;
 
 // Run on every loop
