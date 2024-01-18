@@ -20,7 +20,7 @@ const Color RECT_COLOR       = C_MATRIX_GREEN;
 const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
 const Color TEXT_COLOR       = C_LIGHT_GRAY;
 
-static PlugState * global_plug;   // global reference to the plug (required for the audio_callback)
+static PlugState * global_plug;  // global reference to the plug (required for the audio_callback)
 
 // Refreshes the references lost on the hot-reloading
 void plug_reload(PlugState * plug)
@@ -29,39 +29,58 @@ void plug_reload(PlugState * plug)
 }
 
 // Must use global_input because you cannot pass the Plug and keep a valid callback signature
-void plug_audio_callback(void * data, unsigned int frames_count)
+void plug_audio_callback(void * buffer_data, unsigned int frames)
 {
-    if (data == NULL || frames_count == 0) {
+    if (buffer_data == NULL || frames == 0) {
         fprintf(stderr, "No data in this iteration");
         return;
     }
-    assert(global_plug->n > frames_count);
+    assert(global_plug->n > frames);
 
-    //### Frame * frames = (Frame *) data;
-    //### unsigned int channels = global_plug->music.stream.channels;
-    frame_t * frames = data;
-    const bool new_data_fits = frames_count <= (global_plug->n - global_plug->in_size);
+    const size_t channels = global_plug->music.stream.channels;
+
+    assert(channels == 2 || channels == 1);
+
+    // Cant find mono sound to test
+    if (channels == SOUND_STEREO) {
+        size_t samples_counter = 0;
+        for (unsigned int i = 0; i < frames * 2; i += 2) {
+            float left_sample = ((float *) buffer_data)[i];
+            //float right_sample = ((float *) buffer_data)[i + 1];
+            global_plug->samples[samples_counter] = left_sample;
+            samples_counter++;
+        }
+    } else {
+        for (unsigned int i = 0; i < frames; i++) {
+            float sample = ((float *) buffer_data)[i];
+            global_plug->samples[i] = sample;
+        }
+    }
+
+    const size_t samples_c = frames; // dont change name of args to be recognizable
+
+    const bool new_data_fits = samples_c <= (global_plug->n - global_plug->in_size);
 
     // Ring buffer
     if (new_data_fits) {
-        // Append the data no moving
-        for (size_t i = 0; i < frames_count; i++) {
+        // Append the data. Dont shift anything
+        for (size_t i = 0; i < samples_c; i++) {
             size_t index = global_plug->in_size + i;
-            global_plug->in[index] = frames[i][0]; // left channel
+            global_plug->in[index] = global_plug->samples[i];
             global_plug->in_size++;
         }
     } else {
         global_plug->in_size = global_plug->n; // sets it as filled up
 
         // Shift left to fit new
-        for (size_t i = 0; i < (global_plug->n - frames_count); i++) {
-            global_plug->in[i] = global_plug->in[i + frames_count];
+        for (size_t i = 0; i < (global_plug->n - samples_c); i++) {
+            global_plug->in[i] = global_plug->in[i + samples_c];
         }
 
         // Append new data at the space shifted for it
-        for (size_t i = 0; i < frames_count; i++) {
-            size_t index = global_plug->n - frames_count + i;
-            global_plug->in[index] = frames[i][0]; // left channel
+        for (size_t i = 0; i < samples_c; i++) {
+            size_t index = global_plug->n - samples_c + i;
+            global_plug->in[index] = global_plug->samples[i];
         }
     }
 }

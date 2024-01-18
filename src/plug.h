@@ -5,6 +5,8 @@
 #include <raylib.h>
 
 #define MAX_STRING_LENGHT 100
+#define SOUND_STEREO 2
+#define SOUND_MONO 1
 
 typedef struct {
     float left;          // Sample for left channel
@@ -35,6 +37,8 @@ typedef struct {
     float complex * out; // Output buffer for FFT
     size_t n;            // The size of input and output buffers
     size_t in_size;      // Track filled part of input buffer
+
+    float samples[1024]; // samples data arr for the audio callback
 
     size_t m;            // Number of frequencies in the interval
     float step;          // Constant from Frequency Table Formula
