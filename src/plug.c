@@ -20,6 +20,8 @@ const Color RECT_COLOR       = C_MATRIX_GREEN;
 const Color RECT_NEG_COLOR   = C_MATRIX_PURPLE;
 const Color TEXT_COLOR       = C_LIGHT_GRAY;
 
+const float TEXT_SPACING = 2.0f;
+
 static PlugState * global_plug;  // global reference to the plug (required for the audio_callback)
 
 // Refreshes the references lost on the hot-reloading
@@ -120,8 +122,7 @@ void plug_set_playing(PlugState * plug, bool is_playing)
 // Call DrawTextEx with some values already set to simplify the call
 void draw_text(const Font font, const char * text, const Vector2 pos)
 {
-    const float text_spacing = 2.0f;
-    DrawTextEx(font, text, pos, (float) font.baseSize, text_spacing, DARKGRAY);
+    DrawTextEx(font, text, pos, (float) font.baseSize, TEXT_SPACING, DARKGRAY);
 }
 
 void check_key_pressed(PlugState * plug)
@@ -227,16 +228,29 @@ float calc_max_amp(PlugState * plug)
 
 void main_update(PlugState * plug)
 {
-    UpdateMusicStream(plug->music);
+    if (IsMusicReady(plug->music)) {
+        UpdateMusicStream(plug->music);
 
-    check_key_pressed(plug);
+        check_key_pressed(plug);
+
+        // Only generate str on time change
+        float updated_music_time = GetMusicTimePlayed(plug->music);
+        if (updated_music_time - plug->curr_time > 0.2) { // update gap 200ms
+            // Makes the text for: (<volume>) <current_time> / <total_time>
+            snprintf(plug->str.vol_time, sizeof(plug->str.vol_time), "(%2.0f) %3.0f / %3.0f",
+                     plug->curr_volume * 100, updated_music_time, plug->music_len);
+            plug->curr_time = updated_music_time;
+        }
+    }
 
     if (IsFileDropped()) {
         FilePathList droppedFiles = LoadDroppedFiles();
         if (droppedFiles.count > 0) {
-            StopMusicStream(plug->music);
-            DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-            UnloadMusicStream(plug->music);
+            if (IsMusicReady(plug->music)) {
+                StopMusicStream(plug->music);
+                DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+                UnloadMusicStream(plug->music);
+            }
 
             const char * file_path = droppedFiles.paths[0];
             plug_load_music(plug, file_path);
@@ -248,17 +262,9 @@ void main_update(PlugState * plug)
 
             AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
             PlayMusicStream(plug->music);
+            plug_set_playing(plug, true);
         }
         UnloadDroppedFiles(droppedFiles);
-    }
-
-    // Only generate str on time change
-    float updated_music_time = GetMusicTimePlayed(plug->music);
-    if (updated_music_time - plug->curr_time > 0.2) { // update gap 200ms
-        // Makes the text for: (<volume>) <current_time> / <total_time>
-        snprintf(plug->str.vol_time, sizeof(plug->str.vol_time), "(%2.0f) %3.0f / %3.0f",
-                 plug->curr_volume * 100, updated_music_time, plug->music_len);
-        plug->curr_time = updated_music_time;
     }
 }
 
@@ -268,16 +274,25 @@ void main_draw(PlugState * plug)
     ClearBackground(BACKGROUND_COLOR);
 
     // UI Text -------------------------------------------------------------------------------------
-    // App title
-    draw_text(plug->font, plug->str.title, (Vector2) { 15, plug->height - 40 });
-    // Is it playing or not feedback
-    draw_text(plug->font, plug->str.play_state, (Vector2) { plug->width - 320, plug->height - 40 });
-    // Temp and Volume to the corner
-    float extra_padding = plug->curr_time >= 100 ? 5 : 0;
-    draw_text(plug->font, plug->str.vol_time, (Vector2) { plug->width - 168 - extra_padding, plug->height - 40 });
+    if (IsMusicReady(plug->music)) {
+        // App title
+        draw_text(plug->font, plug->str.title, (Vector2) { 15, plug->height - 40 });
+        // Is it playing or not feedback
+        draw_text(plug->font, plug->str.play_state, (Vector2) {
+                plug->width - 320, plug->height - 40 });
+        // Temp and Volume to the corner
+        const float extra_padding = plug->curr_time >= 100 ? 5 : 0;
+        draw_text(plug->font, plug->str.vol_time, (Vector2) {
+                plug->width - 168 - extra_padding, plug->height - 40 });
 #ifdef DEV_ENV // String to print N on dev mode
-    draw_text(plug->font, plug->str.n_str, (Vector2) { 165, plug->height - 40 });
+        draw_text(plug->font, plug->str.n_str, (Vector2) { 165, plug->height - 40 });
 #endif
+    } else {
+        const char * drag_txt = "Drag & Drop Music Files Here";
+        const Vector2 dimensions = MeasureTextEx(plug->font, drag_txt, (float) plug->font.baseSize, TEXT_SPACING);
+        draw_text(plug->font, drag_txt, (Vector2) {
+                (plug->width / 2) - (dimensions.x / 2), (plug->height / 2) - (dimensions.y / 2) });
+    }
     // UI Text -------------------------------------------------------------------------------------
 
     // TODO: Draw -> check if can skip calculations on skip frames on

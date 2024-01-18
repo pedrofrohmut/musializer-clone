@@ -133,12 +133,14 @@ void main_init(PlugState * plug, const char * file_path)
     SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
     InitAudioDevice();
 
-    plug_load_music(plug, file_path);
-    plug->curr_volume = 0.0f;
-    SetMusicVolume(plug->music, plug->curr_volume);
-    AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-    PlayMusicStream(plug->music); // For testing can remove later
-    plug_set_playing(plug, true);
+    if (file_path != NULL) {
+        plug_load_music(plug, file_path);
+        plug->curr_volume = 0.0f;
+        SetMusicVolume(plug->music, plug->curr_volume);
+        AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+        PlayMusicStream(plug->music); // For testing can remove later
+        plug_set_playing(plug, true);
+    }
 
     // Load font
     const int font_size = 30;
@@ -200,6 +202,8 @@ const char * get_file_path(int argc, char ** argv)
 // typedef void (*AudioCallback)(void *bufferData, unsigned int frames);
 int main(int argc, char **argv)
 {
+    (void) argc;
+
     PlugState plug;
 
     if (!reload_libplug(&plug)) {
@@ -208,7 +212,7 @@ int main(int argc, char **argv)
     }
 
     // TODO: Change the init so that it can initiate without any music
-    const char * file_path = get_file_path(argc, argv);
+    const char * file_path = argv[1];
     main_init(&plug, file_path);
     plug_reload(&plug); // Reload state after values have been initialized on main_init
 
