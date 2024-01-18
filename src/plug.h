@@ -20,7 +20,13 @@ typedef struct {
     char vol_time[MAX_STRING_LENGHT];
     char play_state[MAX_STRING_LENGHT];
     char n_str[MAX_STRING_LENGHT];
+    char drag_txt[MAX_STRING_LENGHT];
 } PlugStrings;
+
+typedef struct {
+    bool has_error;      // Error state
+    char message[1024];      // Error message
+} PlugError;
 
 typedef struct {
     float width;         // Window width
@@ -45,7 +51,9 @@ typedef struct {
 
     unsigned int skip_c; // Counter to skip frames
 
-    PlugStrings str;
+    PlugStrings str;     // Holds the string to UI
+
+    PlugError error;     // Holds error state and message
 } PlugState;
 
 // Run on every loop

@@ -124,10 +124,16 @@ void main_init(PlugState * plug, const char * file_path)
     // Skip frames
     plug->skip_c = 0;
 
+    // UI strings
     strncpy(plug->str.title, "Musializer", sizeof(plug->str.title));
+    strncpy(plug->str.drag_txt, "Drag & Drop Music Files Here", sizeof(plug->str.drag_txt));
 #ifdef DEV_ENV // String to print N on dev mode
     snprintf(plug->str.n_str, sizeof(plug->str.n_str), "%zu", plug->n);
 #endif
+
+    // Error
+    strncpy(plug->error.message, "", sizeof(plug->error.message));
+    plug->error.has_error = false;
 
     InitWindow(plug->width, plug->height, "Musializer");
     SetTargetFPS(60); // FPS set to 60 to stop flikering the sound, 30 for testing
@@ -159,8 +165,10 @@ void main_init(PlugState * plug, const char * file_path)
 void unload_and_close(PlugState * plug)
 {
     // Raylib
-    DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-    UnloadMusicStream(plug->music);
+    if (IsMusicReady(plug->music)) {
+        DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+        UnloadMusicStream(plug->music);
+    }
     UnloadFont(plug->font);
     CloseAudioDevice();
     CloseWindow();
@@ -170,31 +178,6 @@ void unload_and_close(PlugState * plug)
 
     // Close handle for libplug
     if (libplug_handle != NULL) dlclose(libplug_handle);
-}
-
-char * shift_args(int * argc, char ***argv)
-{
-    if (*argc < 1) {
-        fprintf(stderr, "No argument provided for the Music file.");
-        exit(1);
-    }
-    char * result = (**argv);
-    (*argv) += 1;
-    (*argc) -= 1;
-    return result;
-}
-
-const char * get_file_path(int argc, char ** argv)
-{
-    const char * program = shift_args(&argc, &argv);
-    // TODO: supply input file vie drag & drop
-    if (argc == 0) {
-       fprintf(stderr, "Usage: %s <input>\n", program);
-       fprintf(stderr, "ERROR: no input file is provided\n");
-       exit(1);
-    }
-    const char * file_path = shift_args(&argc, &argv);
-    return file_path;
 }
 
 // TODO: Write my own Attach Detach Functions that accept callback like:
@@ -211,7 +194,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // TODO: Change the init so that it can initiate without any music
     const char * file_path = argv[1];
     main_init(&plug, file_path);
     plug_reload(&plug); // Reload state after values have been initialized on main_init

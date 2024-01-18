@@ -99,10 +99,9 @@ void plug_load_music(PlugState * plug, const char * file_path)
 
     // Check music
     if (! IsMusicReady(plug->music)) {
-        fprintf(stderr, "Music not loaded: %s", file_path);
-        exit(1);
+        log_error("Could not load music for path: %s", file_path);
+        return;
     }
-    assert(plug->music.stream.channels == 2);
 
     // Setup
     plug->music_len = GetMusicTimeLength(plug->music);
@@ -110,6 +109,7 @@ void plug_load_music(PlugState * plug, const char * file_path)
     SetMusicVolume(plug->music, plug->curr_volume);
 }
 
+// Set UI string based on playing state
 void plug_set_playing(PlugState * plug, bool is_playing)
 {
     if (is_playing) {
@@ -119,10 +119,16 @@ void plug_set_playing(PlugState * plug, bool is_playing)
     }
 }
 
-// Call DrawTextEx with some values already set to simplify the call
+// Call DrawTextEx with some values already set to simplify the call (default color)
 void draw_text(const Font font, const char * text, const Vector2 pos)
 {
     DrawTextEx(font, text, pos, (float) font.baseSize, TEXT_SPACING, DARKGRAY);
+}
+
+// Call DrawTextEx with some values already set to simplify the call
+void draw_text_color(const Font font, const char * text, const Vector2 pos, Color color)
+{
+    DrawTextEx(font, text, pos, (float) font.baseSize, TEXT_SPACING, color);
 }
 
 void check_key_pressed(PlugState * plug)
@@ -256,13 +262,16 @@ void main_update(PlugState * plug)
             plug_load_music(plug, file_path);
 
             if (! IsMusicReady(plug->music)) {
-                fprintf(stderr, "Music could not be loaded on file drop: %s", file_path);
-                exit(1);
+                log_error("Could not be loaded music by file drop: %s\n", file_path);
+                plug->error.has_error = true;
+                strncpy(plug->error.message, "Dropped file is not valid",
+                        sizeof(plug->error.message));
+            } else {
+                plug->error.has_error = false;
+                AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
+                PlayMusicStream(plug->music);
+                plug_set_playing(plug, true);
             }
-
-            AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
-            PlayMusicStream(plug->music);
-            plug_set_playing(plug, true);
         }
         UnloadDroppedFiles(droppedFiles);
     }
@@ -287,37 +296,44 @@ void main_draw(PlugState * plug)
 #ifdef DEV_ENV // String to print N on dev mode
         draw_text(plug->font, plug->str.n_str, (Vector2) { 165, plug->height - 40 });
 #endif
+    } else if (plug->error.has_error) {
+        const Vector2 dimensions = MeasureTextEx(plug->font, plug->error.message,
+                (float) plug->font.baseSize, TEXT_SPACING);
+        draw_text_color(plug->font, plug->error.message, (Vector2) {
+                (plug->width / 2) - (dimensions.x / 2), (plug->height / 2) - (dimensions.y / 2) }, RED);
     } else {
-        const char * drag_txt = "Drag & Drop Music Files Here";
-        const Vector2 dimensions = MeasureTextEx(plug->font, drag_txt, (float) plug->font.baseSize, TEXT_SPACING);
-        draw_text(plug->font, drag_txt, (Vector2) {
+        const Vector2 dimensions = MeasureTextEx(plug->font, plug->str.drag_txt,
+                (float) plug->font.baseSize, TEXT_SPACING);
+        draw_text(plug->font, plug->str.drag_txt, (Vector2) {
                 (plug->width / 2) - (dimensions.x / 2), (plug->height / 2) - (dimensions.y / 2) });
     }
     // UI Text -------------------------------------------------------------------------------------
 
     // TODO: Draw -> check if can skip calculations on skip frames on
-    // Draw Rectangles -----------------------------------------------------------------------------
-    calc_fft(plug);
-    const float max_amp = calc_max_amp(plug);
-    const float half_height = plug->height / 2;
-    const float cell_width = plug->width / plug->m;
+    if (IsMusicReady(plug->music)) {
+        // Draw Rectangles -----------------------------------------------------------------------------
+        calc_fft(plug);
+        const float max_amp = calc_max_amp(plug);
+        const float half_height = plug->height / 2;
+        const float cell_width = plug->width / plug->m;
 
-    float freq = 20.0f;
-    for (size_t i = 0; i < plug->m; i++) { // Iterate through m frequencies
-        float next_freq = freq * plug->step;
+        float freq = 20.0f;
+        for (size_t i = 0; i < plug->m; i++) { // Iterate through m frequencies
+            float next_freq = freq * plug->step;
 
-        float normalizer  = calc_normalizer(plug, freq, next_freq, max_amp);
+            float normalizer  = calc_normalizer(plug, freq, next_freq, max_amp);
 
-        // Draw Rect with calculated amps_avarage
-        const float pos_x = i * cell_width;
-        const float pos_y = half_height - (half_height * normalizer);
-        const int rect_width = cell_width;
-        const int rect_height = half_height * normalizer;
-        DrawRectangle(pos_x, pos_y, rect_width, rect_height, SKYBLUE);
+            // Draw Rect with calculated amps_avarage
+            const float pos_x = i * cell_width;
+            const float pos_y = half_height - (half_height * normalizer);
+            const int rect_width = cell_width;
+            const int rect_height = half_height * normalizer;
+            DrawRectangle(pos_x, pos_y, rect_width, rect_height, SKYBLUE);
 
-        freq = next_freq;
+            freq = next_freq;
+        }
+        // Draw Rectangles -----------------------------------------------------------------------------
     }
-    // Draw Rectangles -----------------------------------------------------------------------------
 
     EndDrawing(); // ###############################################################################
 }
