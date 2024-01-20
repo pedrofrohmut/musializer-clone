@@ -26,18 +26,14 @@ static plug_set_playing_t    plug_set_playing    = NULL;
 void pre_reload_libplug(PlugState * plug)
 {
     if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
-        // Detach the audio from the previous version of the callback function
         DetachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
 }
 
 void post_reload_libplug(PlugState * plug)
 {
-    // Reloads internal state of plug
     plug_reload(plug);
-
     if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
-        // Attach the audio again to the new version
         AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
 }
@@ -87,22 +83,26 @@ bool reload_libplug(PlugState * plug)
         return false;
     }
 
-    log_info("libplug.so Reloaded");
-
     post_reload_libplug(plug);
 
+    log_info("libplug.so Reloaded");
     return true;
 }
 
+// TODO: checks later if this is still needed
 size_t calculate_m(const size_t n, const float step)
 {
-    size_t count = 0;
-    float freq = 20.0f;
-    while (freq < n) {
-        freq = freq * step;
-        count++;
-    }
-    return count;
+    /* size_t count = 0; */
+    /* float freq = 20.0f; */
+    /* while (freq < n) { */
+    /*     freq = freq * step; */
+    /*     count++; */
+    /* } */
+    /* return count; */
+    size_t m = 0; // M frequencies
+    const float LOWF = 1.0f; // TODO: make it an arg
+    for (float f = LOWF; (size_t) f < n/2; f = ceilf(f * step)) m++;
+    return m;
 }
 
 void main_init(PlugState * plug, const char * file_path)
@@ -112,8 +112,9 @@ void main_init(PlugState * plug, const char * file_path)
     plug->height = 600;
 
     // Input/Output buffers
-    plug->n = (size_t) 2 << 13; // 2 << 13 == 16,384 (13 is default, min is 9)
-    plug->in = (float *) calloc(plug->n, sizeof(float));
+    plug->n = (size_t) 2 << 9; // 2 << 13 == 16,384 (13 is default, min is 9)
+    plug->in1 = (float *) calloc(plug->n, sizeof(float));
+    plug->in2 = (float *) calloc(plug->n, sizeof(float));
     plug->out = (float complex *) calloc(plug->n, sizeof(float complex));
     plug->in_size = 0;
 
@@ -172,9 +173,6 @@ void unload_and_close(PlugState * plug)
     UnloadFont(plug->font);
     CloseAudioDevice();
     CloseWindow();
-
-    // Plug lib and state
-    if (plug->out != NULL) free(plug->out);
 
     // Close handle for libplug
     if (libplug_handle != NULL) dlclose(libplug_handle);

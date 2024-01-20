@@ -59,4 +59,5 @@ Link: [Youtube playlist](https://www.youtube.com/playlist?list=PLpM-Dvs8t0Vak1rr
 
 ### TODOS:
 
-- Remove hot reloading to reduce unecessary complexity
+- [ ] Remove hot reloading to reduce unecessary complexity
+- [ ] Remove callback support for mono files (Raylib make everything 2 channels)

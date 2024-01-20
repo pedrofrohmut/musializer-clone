@@ -31,60 +31,35 @@ void plug_reload(PlugState * plug)
 }
 
 // Must use global_input because you cannot pass the Plug and keep a valid callback signature
-void plug_audio_callback(void * buffer_data, unsigned int frames)
+void plug_audio_callback(void * data, unsigned int framesc)
 {
-    if (buffer_data == NULL || frames == 0) {
+    if (data == NULL || framesc == 0) {
         fprintf(stderr, "No data in this iteration");
         return;
     }
-    assert(global_plug->n > frames);
 
-    const size_t channels = global_plug->music.stream.channels;
+    const size_t N = global_plug->n;
+    size_t size = global_plug->in_size;
+    float * in = global_plug->in1;
 
-    assert(channels == 2 || channels == 1);
-
-    // Cant find mono sound to test
-    if (channels == SOUND_STEREO) {
-        size_t samples_counter = 0;
-        for (unsigned int i = 0; i < frames * 2; i += 2) {
-            float left_sample = ((float *) buffer_data)[i];
-            //float right_sample = ((float *) buffer_data)[i + 1];
-            global_plug->samples[samples_counter] = left_sample;
-            samples_counter++;
+    if (N < framesc) {
+        for (size_t i = 0; i < N; i++) {
+            float left = ((float *) data)[i * 2];
+            in[i] = left;
         }
-    } else {
-        for (unsigned int i = 0; i < frames; i++) {
-            float sample = ((float *) buffer_data)[i];
-            global_plug->samples[i] = sample;
-        }
+        return;
     }
 
-    const size_t samples_c = frames; // dont change name of args to be recognizable
-
-    const bool new_data_fits = samples_c <= (global_plug->n - global_plug->in_size);
-
-    // Ring buffer
-    if (new_data_fits) {
-        // Append the data. Dont shift anything
-        for (size_t i = 0; i < samples_c; i++) {
-            size_t index = global_plug->in_size + i;
-            global_plug->in[index] = global_plug->samples[i];
-            global_plug->in_size++;
-        }
-    } else {
-        global_plug->in_size = global_plug->n; // sets it as filled up
-
-        // Shift left to fit new
-        for (size_t i = 0; i < (global_plug->n - samples_c); i++) {
-            global_plug->in[i] = global_plug->in[i + samples_c];
-        }
-
-        // Append new data at the space shifted for it
-        for (size_t i = 0; i < samples_c; i++) {
-            size_t index = global_plug->n - samples_c + i;
-            global_plug->in[index] = global_plug->samples[i];
-        }
+    if (framesc > N - size) {
+        size = N - framesc;
+        for (size_t i = 0; i < size; i++) in[i] = in[i + framesc];
     }
+
+    for (size_t i = 0; i < framesc; i++) {
+        float left = ((float *) data)[i * 2];
+        in[size + i] = left;
+    }
+    size += framesc;
 }
 
 void plug_load_music(PlugState * plug, const char * file_path)
@@ -180,46 +155,44 @@ void fft(float in[], size_t step, float complex out[], size_t n)
     }
 }
 
-float calc_amp(float x)
+float calc_amp(float complex x)
 {
-    float a = fabsf(crealf(x));
-    float b = fabsf(cimagf(x));
-    if (a < b) return b;
-    return a;
+    /* float a = fabsf(crealf(x)); */
+    /* float b = fabsf(cimagf(x)); */
+    /* if (a < b) return b; */
+    /* return a; */
+    float a = crealf(x);
+    float b = cimagf(x);
+    return logf((a * a) + (b * b));
 }
 
-float calc_normalizer(PlugState * plug, float freq, float next_freq, float max_amp)
+/* float calc_normalizer(PlugState * plug, float freq, float next_freq, float max_amp) */
+/* { */
+/*     // Calculate the avarage for this amplitudes interval */
+/*     float amps_acc = 0.0f; */
+/*     size_t q = (size_t) freq; */
+/*     while (q < plug->n && q < (size_t) next_freq) { */
+/*         amps_acc += calc_amp(plug->out[q]); */
+/*         q++; */
+/*     } */
+/*     float amps_avarage = amps_acc / ((size_t)next_freq - (size_t)freq + 1); */
+/*  */
+/*     // Value between 0..1 to set rect height */
+/*     float normalizer  = amps_avarage / max_amp; */
+/*  */
+/*     return normalizer; */
+/* } */
+
+void fft_skip_frames(PlugState * plug)
 {
-    // Calculate the avarage for this amplitudes interval
-    float amps_acc = 0.0f;
-    size_t q = (size_t) freq;
-    while (q < plug->n && q < (size_t) next_freq) {
-        amps_acc += calc_amp(plug->out[q]);
-        q++;
-    }
-    float amps_avarage = amps_acc / ((size_t)next_freq - (size_t)freq + 1);
-
-    // Value between 0..1 to set rect height
-    float normalizer  = amps_avarage / max_amp;
-
-    return normalizer;
-}
-
-void calc_fft(PlugState * plug)
-{
-#if 0
     // Make the animation slower (skiping the change of plug->out)
-    const unsigned int skip_step = 1; // only fft on every (n + 1) frames
+    const unsigned int skip_step = 3; // only fft on every (n + 1) frames
     if (plug->skip_c >= skip_step) {
         plug->skip_c = 0;
-        fft(global_input, 1, plug->out, plug->n);
+        fft(plug->in2, 1, plug->out, plug->n);
     } else {
         plug->skip_c++;
     }
-#else
-    fft(plug->in, 1, plug->out, plug->n);
-#endif
-
 }
 
 float calc_max_amp(PlugState * plug)
@@ -277,12 +250,10 @@ void main_update(PlugState * plug)
     }
 }
 
-void main_draw(PlugState * plug)
+void draw_ui(PlugState * plug)
 {
-    BeginDrawing(); //##############################################################################
-    ClearBackground(BACKGROUND_COLOR);
-
-    // UI Text -------------------------------------------------------------------------------------
+    // TODO: come up with some king of strut to be used here and that can be store
+    // not just with the text be with the Vector2 too
     if (IsMusicReady(plug->music)) {
         // App title
         draw_text(plug->font, plug->str.title, (Vector2) { 15, plug->height - 40 });
@@ -307,39 +278,63 @@ void main_draw(PlugState * plug)
         draw_text(plug->font, plug->str.drag_txt, (Vector2) {
                 (plug->width / 2) - (dimensions.x / 2), (plug->height / 2) - (dimensions.y / 2) });
     }
-    // UI Text -------------------------------------------------------------------------------------
+}
 
-    // TODO: Draw -> check if can skip calculations on skip frames on
-    if (IsMusicReady(plug->music)) {
-        // Draw Rectangles -----------------------------------------------------------------------------
-        calc_fft(plug);
-        const float max_amp = calc_max_amp(plug);
-        const float half_height = plug->height / 2;
-        const float cell_width = plug->width / plug->m;
+void draw_rectangles(PlugState * plug)
+{
+    const size_t N = plug->n;
+    const float STEP = plug->step;
+    const float LOWF = 1.0f;
 
-        float freq = 20.0f;
-        for (size_t i = 0; i < plug->m; i++) { // Iterate through m frequencies
-            float next_freq = freq * plug->step;
-
-            float normalizer  = calc_normalizer(plug, freq, next_freq, max_amp);
-
-            // Draw Rect with calculated amps_avarage
-            const float pos_x = i * cell_width;
-            const float pos_y = half_height - (half_height * normalizer);
-            const int rect_width = cell_width;
-            const int rect_height = half_height * normalizer;
-            DrawRectangle(pos_x, pos_y, rect_width, rect_height, SKYBLUE);
-
-            freq = next_freq;
-        }
-        // Draw Rectangles -----------------------------------------------------------------------------
+    for (size_t i = 0; i < N; i++) {
+        float t = (float) i / (N - 1);
+        float hann = 0.5 - 0.5 * cosf(2 * PI * t); // Windowing function (remove phantom frequencies)
+        plug->in2[i] = plug->in1[i] * hann;
     }
 
-    EndDrawing(); // ###############################################################################
+    /* fft(plug->in2, 1, plug->out, N); */
+    fft_skip_frames(plug);
+
+    float max_amp = 0.0f;
+    for (size_t i = 0; i < N; i++) {
+        float amp = calc_amp(plug->out[i]);
+        if (max_amp < amp) max_amp = amp;
+    }
+
+    const float cell_width = plug->width / plug->m;
+    const float half_height = plug->height / 2;
+    const float bottom = plug->height - 50;
+
+    size_t i = 0;
+    for (float f = LOWF; (size_t) f < N/2; f = ceilf(f * STEP)) {
+        float next_f = ceilf(f * STEP);
+        float max = 0;
+        for (size_t q = (size_t) f; q < N/2 && q < (size_t) next_f; q++) {
+            float amp = calc_amp(plug->out[q]);
+            if (amp > max) max = amp;
+        }
+        // Draw Rectangles -----------------------------------------------------------------------------
+        float norm = max / max_amp; // Normalizer
+        DrawRectangle(i * cell_width, bottom - half_height*norm, cell_width, half_height*norm, GREEN);
+        i++;
+    }
+}
+
+void main_draw(PlugState * plug)
+{
+    ClearBackground(BACKGROUND_COLOR);
+
+    draw_ui(plug);
+
+    // TODO: Draw -> check if can skip calculations on skip frames on
+    if (IsMusicReady(plug->music)) draw_rectangles(plug);
 }
 
 void plug_update(PlugState * plug)
 {
     main_update(plug);
+
+    BeginDrawing(); //##############################################################################
     main_draw(plug);
+    EndDrawing(); // ###############################################################################
 }

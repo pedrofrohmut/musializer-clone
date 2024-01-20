@@ -39,7 +39,8 @@ typedef struct {
     float music_len;     // Music total length
     Music music;         // Main music
 
-    float * in;          // Input buffer for audio samples (left channel)
+    float * in1;          // Input buffer for audio samples (left channel)
+    float * in2;
     float complex * out; // Output buffer for FFT
     size_t n;            // The size of input and output buffers
     size_t in_size;      // Track filled part of input buffer

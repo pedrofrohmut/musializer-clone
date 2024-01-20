@@ -23,7 +23,7 @@ all: clean dist
 
 dev: plug_dev main_dev
 
-debug: logger plug main_debug
+debug: logger plug_debug main_debug
 
 dist: plug_dist main_dist
 
@@ -57,9 +57,14 @@ main_dev: src/main.c
 
 ### DEBUG ##########################################################################################
 
+# -fPIC -shared are the flag tha makes the output into a shared library
+plug_debug: src/plug.c
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
+	@echo -e "OK > build/libplug.so built with no errors\n"
+
 # ggdb: debug info for gdb, -Og: Optimization made for debug, -Werror: treat warnings as errors
 main_debug: src/main.c
-	${CC} ${CFLAGS} -ggdb -Werror -Og -o ./build/debug.out ./src/main.c ./bin/logger.o ${LIBS}
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o ./build/debug.out ./src/main.c ./src/plug.c ./bin/logger.o ${LIBS}
 	@echo -e "OK > build/debug.out built with no errors"
 
 ### DISTRIBUTION/PRODUCTION ########################################################################
@@ -73,3 +78,9 @@ plug_dist: src/plug.c
 main_dist:
 	${CC} ${CFLAGS} -o ./build/musializer.out ./src/plug.c ./src/logger.c ./src/main.c ${LIBS}
 	@echo -e "OK > build/muzializer.out built with no errors"
+
+### EXTRA ##########################################################################################
+
+foo: ./extra/foo.c
+	${CC} ${CFLAGS} -o ./build/foo.out ./extra/foo.c -lm
+	@echo "OK > build/foo.out built with no errors"
