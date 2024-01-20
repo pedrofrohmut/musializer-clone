@@ -56,8 +56,11 @@ Link: [Youtube playlist](https://www.youtube.com/playlist?list=PLpM-Dvs8t0Vak1rr
 - v5 = Drag and Drop: using raylib to load files dropped.
 - v5.1 = file_path argument is now optional
 - v5.2 = Deals with files dropped that are not music
+- v6 = Better Visualization: Applyed windowing function, ceilf step, etc
+- v7 = Removed Hot reloading: Functionalitty from plug.c to app.c
 
 ### TODOS:
 
-- [ ] Remove hot reloading to reduce unecessary complexity
-- [ ] Remove callback support for mono files (Raylib make everything 2 channels)
+- [X] Remove hot reloading to reduce unecessary complexity
+- [X] Remove callback support for mono files (Raylib make everything 2 channels)
+- [X] Update make file dist and debug

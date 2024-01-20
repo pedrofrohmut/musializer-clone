@@ -19,13 +19,13 @@ CFLAGS = -Wall -Wextra -std=c99 $(pkg-config --cflags raylib)
 
 LIBS = $(pkg-config --libs raylib) -lraylib -lglfw -lm -ldl -lpthread -L./build/
 
-all: clean dist
+all: clean main_dist
 
-dev: plug_dev main_dev
+dev: app_dev main_dev
 
-debug: logger plug_debug main_debug
+debug: logger_debug app_debug main_debug
 
-dist: plug_dist main_dist
+dist: main_dist
 
 clean:
 	rm -f bin/*.o
@@ -33,50 +33,40 @@ clean:
 	rm -f build/*.out
 	@echo -e "OK > Clean up complete\n"
 
-### LIBS ###########################################################################################
-
-# -fPIC -shared are the flag tha makes the output into a shared library
-plug: src/plug.c
-	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
-	@echo -e "OK > build/libplug.so built with no errors\n"
-
-logger: src/logger.c
-	${CC} ${CFLAGS} -c src/logger.c -o bin/logger.o
-	@echo -e "OK > bin/logger.o built into binaries\n"
-
 ### DEV ############################################################################################
 
-# -fPIC -shared are the flag tha makes the output into a shared library
-plug_dev: src/plug.c
-	${CC} ${CFLAGS} -DDEV_ENV -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
-	@echo -e "OK > build/libplug.so built with no errors\n"
+logger_dev: src/logger.c
+	${CC} ${CFLAGS} -DDEV_ENV -o ./bin/dev_logger.o -c ./src/logger.c
+	@echo -e "OK > bin/dev_logger.o built into binaries\n"
+
+app_dev: src/app.c
+	${CC} ${CFLAGS} -DDEV_ENV -o ./bin/dev_app.o -c ./src/app.c ${LIBS}
+	@echo -e "OK > bin/dev_app.o built into binaries\n"
 
 main_dev: src/main.c
-	${CC} ${CFLAGS} -DDEV_ENV -o ./build/dev.out ./src/main.c ./bin/logger.o ${LIBS}
+	${CC} ${CFLAGS} -DDEV_ENV -o ./build/dev.out ./src/main.c ./bin/dev_app.o ./bin/dev_logger.o ${LIBS}
 	@echo -e "OK > build/dev.out built with no errors"
 
 ### DEBUG ##########################################################################################
 
-# -fPIC -shared are the flag tha makes the output into a shared library
-plug_debug: src/plug.c
-	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o build/libplug.so -fPIC -shared src/plug.c ./bin/logger.o ${LIBS}
-	@echo -e "OK > build/libplug.so built with no errors\n"
+logger_debug: src/logger.c
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o -o ./bin/debug_logger.o -c ./src/logger.c
+	@echo -e "OK > bin/debug_logger.o built into binaries\n"
+
+app_debug: src/app.c
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o ./bin/debug_app.o -c ./src/app.c ${LIBS}
+	@echo -e "OK > bin/debug_app.o built into binaries\n"
 
 # ggdb: debug info for gdb, -Og: Optimization made for debug, -Werror: treat warnings as errors
 main_debug: src/main.c
-	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o ./build/debug.out ./src/main.c ./src/plug.c ./bin/logger.o ${LIBS}
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o ./build/debug.out ./src/main.c ./bin/debug_app.o ./bin/debug_logger.o ${LIBS}
 	@echo -e "OK > build/debug.out built with no errors"
 
 ### DISTRIBUTION/PRODUCTION ########################################################################
 
-# -fPIC -shared are the flag tha makes the output into a shared library
-plug_dist: src/plug.c
-	${CC} ${CFLAGS} -o build/libplug.so -fPIC -shared ./src/plug.c ./src/logger.c ${LIBS}
-	@echo -e "OK > build/libplug.so built with no errors\n"
-
-# Static link with plug and logger
+# Static link with app and logger
 main_dist:
-	${CC} ${CFLAGS} -o ./build/musializer.out ./src/plug.c ./src/logger.c ./src/main.c ${LIBS}
+	${CC} ${CFLAGS} -o ./build/musializer.out ./src/app.c ./src/logger.c ./src/main.c ${LIBS}
 	@echo -e "OK > build/muzializer.out built with no errors"
 
 ### EXTRA ##########################################################################################
