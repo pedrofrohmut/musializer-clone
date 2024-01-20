@@ -157,31 +157,10 @@ void fft(float in[], size_t step, float complex out[], size_t n)
 
 float calc_amp(float complex x)
 {
-    /* float a = fabsf(crealf(x)); */
-    /* float b = fabsf(cimagf(x)); */
-    /* if (a < b) return b; */
-    /* return a; */
     float a = crealf(x);
     float b = cimagf(x);
     return logf((a * a) + (b * b));
 }
-
-/* float calc_normalizer(PlugState * plug, float freq, float next_freq, float max_amp) */
-/* { */
-/*     // Calculate the avarage for this amplitudes interval */
-/*     float amps_acc = 0.0f; */
-/*     size_t q = (size_t) freq; */
-/*     while (q < plug->n && q < (size_t) next_freq) { */
-/*         amps_acc += calc_amp(plug->out[q]); */
-/*         q++; */
-/*     } */
-/*     float amps_avarage = amps_acc / ((size_t)next_freq - (size_t)freq + 1); */
-/*  */
-/*     // Value between 0..1 to set rect height */
-/*     float normalizer  = amps_avarage / max_amp; */
-/*  */
-/*     return normalizer; */
-/* } */
 
 void fft_skip_frames(PlugState * plug)
 {

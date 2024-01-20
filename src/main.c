@@ -32,7 +32,7 @@ void pre_reload_libplug(PlugState * plug)
 
 void post_reload_libplug(PlugState * plug)
 {
-    plug_reload(plug);
+    plug_reload(plug); // Reloads internal state of plug
     if (plug != NULL && IsMusicReady(plug->music) && plug_audio_callback != NULL) {
         AttachAudioStreamProcessor(plug->music.stream, plug_audio_callback);
     }
@@ -99,8 +99,8 @@ size_t calculate_m(const size_t n, const float step)
     /*     count++; */
     /* } */
     /* return count; */
-    size_t m = 0; // M frequencies
     const float LOWF = 1.0f; // TODO: make it an arg
+    size_t m = 0; // M frequencies
     for (float f = LOWF; (size_t) f < n/2; f = ceilf(f * step)) m++;
     return m;
 }
