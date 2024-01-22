@@ -50,7 +50,7 @@ main_dev: src/main.c
 ### DEBUG ##########################################################################################
 
 logger_debug: src/logger.c
-	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o -o ./bin/debug_logger.o -c ./src/logger.c
+	${CC} ${CFLAGS} -DDEV_ENV -ggdb -Werror -Og -o ./bin/debug_logger.o -c ./src/logger.c
 	@echo -e "OK > bin/debug_logger.o built into binaries\n"
 
 app_debug: src/app.c
