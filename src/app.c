@@ -217,7 +217,7 @@ void update_ui(AppState * state)
         state->curr_time = updated_music_time;
         // Makes the text for: (<volume>) <current_time> / <total_time>
         snprintf(state->str.vol_time, sizeof(state->str.vol_time), "(%2.0f) %3.0f / %3.0f",
-                state->curr_volume * 100, updated_music_time, state->music_len);
+                 state->curr_volume * 100, updated_music_time, state->music_len);
         set_playing(state, true);
     }
 }
@@ -294,12 +294,14 @@ void draw_ui(AppState * state)
         const Vector2 dimensions = MeasureTextEx(state->font, state->error.message,
                 (float) state->font.baseSize, TEXT_SPACING);
         draw_text_color(state->font, state->error.message, (Vector2) {
-                (state->width / 2) - (dimensions.x / 2), (state->height / 2) - (dimensions.y / 2) }, RED);
+                (state->width / 2) - (dimensions.x / 2),
+                (state->height / 2) - (dimensions.y / 2) }, RED);
     } else {
         const Vector2 dimensions = MeasureTextEx(state->font, state->str.drag_txt,
                 (float) state->font.baseSize, TEXT_SPACING);
         draw_text(state->font, state->str.drag_txt, (Vector2) {
-                (state->width / 2) - (dimensions.x / 2), (state->height / 2) - (dimensions.y / 2) });
+                (state->width / 2) - (dimensions.x / 2),
+                (state->height / 2) - (dimensions.y / 2) });
     }
 }
 
@@ -333,7 +335,8 @@ void fft_skip_frames(AppState * state)
     if (state->skip_c >= skip_step) {
         for (size_t i = 0; i < N; i++) {
             float t = (float) i / (N - 1);
-            float hann = 0.5 - 0.5 * cosf(2 * PI * t); // Windowing function (remove phantom frequencies)
+            // Windowing function (remove phantom frequencies)
+            float hann = 0.5 - 0.5 * cosf(2 * PI * t);
             state->in2[i] = state->in1[i] * hann;
         }
 
@@ -380,8 +383,7 @@ void draw_rectangles(AppState * state)
         }
         // Draw Rectangles -----------------------------------------------------------------------------
         float norm = max / max_amp; // Normalizer
-        DrawRectangle(i * cell_width, bottom - half_height*norm, cell_width,
-                    half_height*norm, GREEN);
+        DrawRectangle(i * cell_width, bottom - half_height*norm, cell_width, half_height*norm, GREEN);
         i++;
     }
 }

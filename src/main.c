@@ -1,15 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 #include <raylib.h>
-#include <math.h>
-#include <string.h>
+#include <stddef.h>
 
 #include "app.h"
-#include "logger.h"
 
 // Handy length function
-#define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
+#define ARRAY_LEN(xs) sizeof(xs) / sizeof(xs[0])
 
 int main(int argc, char **argv)
 {
